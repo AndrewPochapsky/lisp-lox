@@ -1,9 +1,4 @@
-()!{}!=
-<=
->=
-<
-// This is a comment
->
-==
-/
-=
+// this is a comment
+(( )){} // grouping stuff
+!*+-/=<> <= == // operators
+"This is a asdf string"

@@ -31,11 +31,19 @@
       (multiple-value-bind (new-chars token) (scan-token chars)
           (scan-tokens new-chars (push token tokens)))))
 
-(defun scan-token (chars &optional current-lexeme is-comment)
+(defun scan-token (chars &optional current-lexeme lexeme-type)
   (let ((c (car chars)))
    (cond
-     ((and (eq c #\NewLine ) is-comment) (scan-token (cdr chars) nil nil))
-     (is-comment (scan-token (cdr chars) nil T))
+     ((and (null c) (eq lexeme-type 'string)) (error "Unterminated string."))
+     ((and (eq c #\NewLine ) (eq lexeme-type 'comment)) (scan-token (cdr chars) nil nil))
+     ((eq lexeme-type 'comment) (scan-token (cdr chars) nil 'comment))
+
+     ((and (eq lexeme-type 'string) (eq c #\")) (values (cdr chars) (create-token 'string current-lexeme nil 0)))
+     ((eq lexeme-type 'string) (scan-token (cdr chars) (concatenate 'string current-lexeme (string c)) 'string))
+
+     ((or (eq c #\NewLine ) (eq c #\Space)) (scan-token (cdr chars)))
+
+     ((eq c #\" ) (scan-token (cdr chars) "" 'string))
      ((eq c #\( ) (values (cdr chars) (create-token 'left-paren (string c) nil 0)))
      ((eq c #\) ) (values (cdr chars) (create-token 'right-paren (string c) nil 0)))
      ((eq c #\{ ) (values (cdr chars) (create-token 'left-brace (string c) nil 0)))
@@ -46,7 +54,6 @@
      ((eq c #\+ ) (values (cdr chars) (create-token 'plus (string c) nil 0)))
      ((eq c #\; ) (values (cdr chars) (create-token 'semi-colon (string c) nil 0)))
      ((eq c #\* ) (values (cdr chars) (create-token 'star (string c) nil 0)))
-     ((eq c #\NewLine ) (values (cdr chars) (create-token 'newline "" nil 0)))
      ((eq c #\! ) (if (eq (cadr chars) #\=)
                       (values (cddr chars) (create-token 'bang-equal "!=" nil 0))
                       (values (cdr chars) (create-token 'bang (string c) nil 0))))
@@ -60,8 +67,9 @@
                       (values (cddr chars) (create-token 'greater-equal ">=" nil 0))
                       (values (cdr chars) (create-token 'greater (string c) nil 0))))
      ((eq c #\/ ) (if (eq (cadr chars) #\/)
-                      (scan-token (cddr chars) nil T)
+                      (scan-token (cddr chars) nil 'comment)
                       (values (cdr chars) (create-token 'slash (string c) nil 0))))
+     ((null c) (values nil nil))
      (t (error "Unexpected character ~C" c)))))
 
 (main "test.lox")
