@@ -27,36 +27,28 @@
 
 (defun scan-tokens (chars &optional tokens current)
   (if (null chars)
-      (reverse tokens)
-      (scan-tokens (cdr chars) (push (scan-token chars) tokens))))
+      (reverse (push (create-token 'eof "" nil 0) tokens))
+      (multiple-value-bind (new-chars token) (scan-token chars)
+          (scan-tokens new-chars (push token tokens)))))
 
-(defun scan-token (chars)
+(defun scan-token (chars &optional current-lexeme)
   (let ((c (car chars)))
    (cond
-     ((eq c #\( ) (create-token 'left-paren (string c) nil 0))
-     ((eq c #\) ) (create-token 'right-paren (string c) nil 0))
-     ((eq c #\{ ) (create-token 'left-brace (string c) nil 0))
-     ((eq c #\} ) (create-token 'right-brace (string c) nil 0))
-     ((eq c #\, ) (create-token 'comma (string c) nil 0))
-     ((eq c #\. ) (create-token 'dot (string c) nil 0))
-     ((eq c #\- ) (create-token 'minus (string c) nil 0))
-     ((eq c #\+ ) (create-token 'plus (string c) nil 0))
-     ((eq c #\; ) (create-token 'semi-colon (string c) nil 0))
-     ((eq c #\* ) (create-token 'star (string c) nil 0))
-     (t (create-token 'eof "" nil 0)))))
+     ((eq c #\( ) (values (cdr chars) (create-token 'left-paren (string c) nil 0)))
+     ((eq c #\) ) (values (cdr chars) (create-token 'right-paren (string c) nil 0)))
+     ((eq c #\{ ) (values (cdr chars) (create-token 'left-brace (string c) nil 0)))
+     ((eq c #\} ) (values (cdr chars) (create-token 'right-brace (string c) nil 0)))
+     ((eq c #\, ) (values (cdr chars) (create-token 'comma (string c) nil 0)))
+     ((eq c #\. ) (values (cdr chars) (create-token 'dot (string c) nil 0)))
+     ((eq c #\- ) (values (cdr chars) (create-token 'minus (string c) nil 0)))
+     ((eq c #\+ ) (values (cdr chars) (create-token 'plus (string c) nil 0)))
+     ((eq c #\; ) (values (cdr chars) (create-token 'semi-colon (string c) nil 0)))
+     ((eq c #\* ) (values (cdr chars) (create-token 'star (string c) nil 0)))
+     ((eq c #\NewLine ) (values (cdr chars) (create-token 'newline "" nil 0)))
+     ((eq c #\! ) (if (eq (cadr chars) #\=) (values (cddr chars) (create-token 'bang-equal "!=" nil 0)) (values (cdr chars) (create-token 'bang (string c) nil 0))))
+     ((eq c #\= ) (if (eq (cadr chars) #\=) (values (cddr chars) (create-token 'equal-equal "==" nil 0)) (values (cdr chars) (create-token 'equal (string c)nil 0))))
+     ((eq c #\< ) (if (eq (cadr chars) #\=) (values (cddr chars) (create-token 'less-equal "<=" nil 0)) (values (cdr chars) (create-token 'less (string c)  nil 0))))
+     ((eq c #\> ) (if (eq (cadr chars) #\=) (values (cddr chars) (create-token 'greater-equal ">=" nil 0)) (values (cdr chars) (create-token 'greater (string c) nil 0))))
+     (t (error "Unexpected character ~C" c)))))
 
 (main "test.lox")
-
-#|
-(defun scan-tokens
-    (let ((tokens (list)))
-      (loop
-        while (not (is-at-end))
-          do ()
-          finally (setf (car tokens) (create-token 'eof "" 0)))))
-|#
-
-;(defvar test-token (create-token 'type "lexeme" 'literal 32))
-
-;(format t "~a, ~a, ~a, ~a" (token-type test-token) (token-lexeme test-token) (token-literal test-token) (token-line test-token))
-
