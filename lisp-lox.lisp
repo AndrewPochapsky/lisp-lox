@@ -13,6 +13,9 @@
 (defun create-token (type lexeme literal line)
   (make-token :type type :lexeme lexeme :literal literal :line line))
 
+(defun parse-number (str)
+  (with-input-from-string (stream str) (read stream)))
+
 (defun main(filename)
     (run-file filename))
 
@@ -35,11 +38,21 @@
   (let ((c (car chars)))
    (cond
      ((and (null c) (eq lexeme-type 'string)) (error "Unterminated string."))
+     ((null c) (values nil nil))
      ((and (eq c #\NewLine ) (eq lexeme-type 'comment)) (scan-token (cdr chars) nil nil))
      ((eq lexeme-type 'comment) (scan-token (cdr chars) nil 'comment))
 
      ((and (eq lexeme-type 'string) (eq c #\")) (values (cdr chars) (create-token 'string current-lexeme nil 0)))
      ((eq lexeme-type 'string) (scan-token (cdr chars) (concatenate 'string current-lexeme (string c)) 'string))
+
+     ((digit-char-p c)
+      (let ((updated-lexeme (concatenate 'string current-lexeme (string c))))
+        (if (or (digit-char-p (cadr chars)) (and (eq (cadr chars) #\.) (eq lexeme-type 'integer)))
+            ; This if statement insures that if we are in 'float mode we won't overwrite it with 'integer
+            (scan-token (cdr chars) updated-lexeme (if (not lexeme-type) 'integer lexeme-type))
+            ; There might be a problem with text like 123abc. How should this be handled?
+            (values (cdr chars) (create-token 'number (parse-number updated-lexeme) nil 0)))))
+     ((and (eq c #\.) (eq lexeme-type 'integer)) (scan-token (cdr chars) (concatenate 'string current-lexeme (string c)) 'float))
 
      ((or (eq c #\NewLine ) (eq c #\Space)) (scan-token (cdr chars)))
 
@@ -69,7 +82,6 @@
      ((eq c #\/ ) (if (eq (cadr chars) #\/)
                       (scan-token (cddr chars) nil 'comment)
                       (values (cdr chars) (create-token 'slash (string c) nil 0))))
-     ((null c) (values nil nil))
      (t (error "Unexpected character ~C" c)))))
 
 (main "test.lox")
