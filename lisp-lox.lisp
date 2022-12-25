@@ -13,8 +13,29 @@
 (defun create-token (type lexeme literal line)
   (make-token :type type :lexeme lexeme :literal literal :line line))
 
+(defparameter *keywords* (make-hash-table :test #'equal))
+(setf (gethash "and" *keywords*) 'and)
+(setf (gethash "class" *keywords*) 'class)
+(setf (gethash "else" *keywords*) 'else)
+(setf (gethash "false" *keywords*) 'false)
+(setf (gethash "for" *keywords*) 'for)
+(setf (gethash "fun" *keywords*) 'fun)
+(setf (gethash "if" *keywords*) 'if)
+(setf (gethash "nil" *keywords*) 'nil)
+(setf (gethash "or" *keywords*) 'or)
+(setf (gethash "print" *keywords*) 'print)
+(setf (gethash "return" *keywords*) 'return)
+(setf (gethash "super" *keywords*) 'super)
+(setf (gethash "this" *keywords*) 'this)
+(setf (gethash "true" *keywords*) 'true)
+(setf (gethash "var" *keywords*) 'var)
+(setf (gethash "while" *keywords*) 'while)
+
 (defun parse-number (str)
   (with-input-from-string (stream str) (read stream)))
+
+(defun valid-identifier (c)
+  (or (alphanumericp c) (eq c #\_)))
 
 (defun main(filename)
     (run-file filename))
@@ -44,6 +65,13 @@
 
      ((and (eq lexeme-type 'string) (eq c #\")) (values (cdr chars) (create-token 'string current-lexeme nil 0)))
      ((eq lexeme-type 'string) (scan-token (cdr chars) (concatenate 'string current-lexeme (string c)) 'string))
+
+     ((or (alpha-char-p c) (and (valid-identifier c) (eq lexeme-type 'identifier)))
+      (let ((updated-lexeme (concatenate 'string current-lexeme (string c))))
+        (if (valid-identifier (cadr chars))
+            (scan-token (cdr chars) updated-lexeme 'identifier)
+            (let ((keyword (gethash updated-lexeme *keywords*)))
+              (values (cdr chars) (create-token (if keyword keyword 'identifier) updated-lexeme nil 0))))))
 
      ((digit-char-p c)
       (let ((updated-lexeme (concatenate 'string current-lexeme (string c))))
