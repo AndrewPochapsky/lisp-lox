@@ -14,6 +14,6 @@
       (run contents))))
 
 (defun run (source)
-  (scan-tokens (coerce source 'list)))
+  (lexer:scan-tokens (coerce source 'list)))
 
 (main "test.lox")

@@ -3,38 +3,10 @@
 
 (in-package #:printer)
 
-(defmacro defvisit (struct-name value &rest body)
-  (let ((function-name (intern (concatenate
-                                 'string
-                                 (symbol-name :visit-)
-                                 (write-to-string struct-name)
-                                 )))
-        (arg-name (intern (concatenate 'string (write-to-string struct-name) "-" (write-to-string value)) (find-package :ast))))
-  `(defun ,function-name (obj &key (,value (funcall ',arg-name obj)))
-     ,@body)))
-
-(defvisit literal value value)
-(defvisit binary operator operator)
-
-(visit-binary (ast:make-binary :left nil :operator "The Op" :right nil))
-
-(visit-literal (ast:make-literal :value "asdf"))
-
-;(defun visit-binary (binary &key (left (ast:binary-left binary)) (op (ast:binary-operator binary)) (right (ast:binary-right binary)))
-;  "Implements the operation for OBJECT of binary."
-;  (print "Visiting binary"))
-
-(defun visit-unary (object)
-  "Implements the operation for OBJECT of unary."
-  (print "Visiting unary"))
-
-;(defun visit-literal (literal &key (value (ast:literal-value literal)))
-;  "Implements the operation for OBJECT of literal."
-;  value)
-
-(defun visit-grouping (grouping &key (expr (ast:grouping-expression grouping)))
-  "Implements the operation for OBJECT of grouping."
-  (print "Visiting grouping"))
+(ast:defvisit literal (value) value)
+(ast:defvisit unary (operator right) (format nil "(~a ~a)" (lexer:token-lexeme operator) (accept right)))
+(ast:defvisit binary (left operator right) (format nil "(~a ~a ~a)" (lexer:token-lexeme operator) (accept left) (accept right)))
+(ast:defvisit grouping (expression) (format nil "(group ~a)" (accept expression)))
 
 (defun visit-printer (object)
   "Implements the operation for OBJECT using the visitor pattern."
@@ -47,12 +19,15 @@
 (defvar bin (ast:make-binary :left "left" :operator "op" :right "right"))
 (defvar literal (ast:make-literal :value "Literal"))
 
-(ast:binary-left (ast:make-binary :left "left" :operator "op" :right "right"))
-(ast:binary-left bin)
+(defvar expr (ast:make-binary
+               :left (ast:make-unary
+                       :operator (lexer:create-token 'minus  "-" nil 0)
+                       :right (ast:make-literal :value 123))
+               :operator (lexer:create-token 'star "*" nil 0)
+               :right (ast:make-grouping :expression (ast:make-literal :value 45.67))))
 
-(ast:literal-value literal)
+(defun accept (obj)
+    (ast:accept obj #'visit-printer))
 
-;(ast:accept bin #'visit-printer)
-
-;(ast:accept literal #'visit-printer)
+(accept expr)
 

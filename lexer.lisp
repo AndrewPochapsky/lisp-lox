@@ -1,4 +1,7 @@
-(in-package #:lisp-lox)
+(defpackage :lexer
+  (:use :common-lisp))
+
+(in-package #:lexer)
 
 (defstruct token
   type
@@ -95,3 +98,6 @@
                       (scan-token (cddr chars) nil 'comment)
                       (values (cdr chars) (create-token 'slash (string c) nil 0))))
      (t (error "Unexpected character ~C" c)))))
+
+(let ((pack (find-package :lexer)))
+  (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
