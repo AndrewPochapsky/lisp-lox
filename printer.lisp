@@ -30,4 +30,3 @@
     (ast:accept obj #'visit-printer))
 
 (accept expr)
-

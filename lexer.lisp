@@ -38,7 +38,7 @@
 
 (defun scan-tokens (chars &optional tokens current)
   (if (null chars)
-      (reverse (push (create-token 'eof "" nil 0) tokens))
+      (reverse tokens)
       (multiple-value-bind (new-chars token) (scan-token chars)
           (scan-tokens new-chars (push token tokens)))))
 
@@ -46,7 +46,7 @@
   (let ((c (car chars)))
    (cond
      ((and (null c) (eq lexeme-type 'string)) (error "Unterminated string."))
-     ((null c) (values nil nil))
+     ((null c) (values nil (create-token 'eof "" nil 0)))
      ((and (eq c #\NewLine ) (eq lexeme-type 'comment)) (scan-token (cdr chars) nil nil))
      ((eq lexeme-type 'comment) (scan-token (cdr chars) nil 'comment))
 
@@ -101,3 +101,4 @@
 
 (let ((pack (find-package :lexer)))
   (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
+
