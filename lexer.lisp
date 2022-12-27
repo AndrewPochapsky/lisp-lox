@@ -101,4 +101,3 @@
 
 (let ((pack (find-package :lexer)))
   (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
-

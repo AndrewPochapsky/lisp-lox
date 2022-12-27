@@ -16,17 +16,8 @@
     ((ast:grouping) (visit-grouping object))
     ((ast:literal) (visit-literal object))))
 
-(defvar bin (ast:make-binary :left "left" :operator "op" :right "right"))
-(defvar literal (ast:make-literal :value "Literal"))
-
-(defvar expr (ast:make-binary
-               :left (ast:make-unary
-                       :operator (lexer:create-token 'minus  "-" nil 0)
-                       :right (ast:make-literal :value 123))
-               :operator (lexer:create-token 'star "*" nil 0)
-               :right (ast:make-grouping :expression (ast:make-literal :value 45.67))))
-
 (defun accept (obj)
     (ast:accept obj #'visit-printer))
 
-(accept expr)
+(let ((pack (find-package :printer)))
+  (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
