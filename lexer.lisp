@@ -12,6 +12,9 @@
 (defun create-token (type lexeme literal line)
   (make-token :type type :lexeme lexeme :literal literal :line line))
 
+(defun create-eof ()
+    (create-token 'eof "" nil 0))
+
 (defun parse-number (str)
   (with-input-from-string (stream str) (read stream)))
 
@@ -38,15 +41,17 @@
 
 (defun scan-tokens (chars &optional tokens current)
   (if (null chars)
-      (reverse tokens)
-      (multiple-value-bind (new-chars token) (scan-token chars)
+      (if (null tokens)
+          (list (create-eof))
+          (reverse tokens))
+        (multiple-value-bind (new-chars token) (scan-token chars)
           (scan-tokens new-chars (push token tokens)))))
 
 (defun scan-token (chars &optional current-lexeme lexeme-type)
   (let ((c (car chars)))
    (cond
      ((and (null c) (eq lexeme-type 'string)) (error "Unterminated string."))
-     ((null c) (values nil (create-token 'eof "" nil 0)))
+     ((null c) (values nil (create-eof)))
      ((and (eq c #\NewLine ) (eq lexeme-type 'comment)) (scan-token (cdr chars) nil nil))
      ((eq lexeme-type 'comment) (scan-token (cdr chars) nil 'comment))
 
