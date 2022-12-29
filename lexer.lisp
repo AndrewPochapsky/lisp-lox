@@ -15,6 +15,18 @@
 (defun create-eof ()
     (create-token 'eof "" nil 0))
 
+(defmacro create-helpers (symbols)
+  `(progn
+     ,@(loop for sym in symbols
+         collect (let ((func-name (intern (concatenate 'string (symbol-name :create-) (symbol-name sym)))))
+           `(defun ,func-name (lexeme)
+              (create-token ',sym lexeme nil 0))))))
+
+(create-helpers (and class else false for if nil or print return super this true
+                   var while number string left-paren right-paren left-brace right-brace
+                   comma dot minus plus semi-colon star bang-equal bang equal-equal equal
+                   less-equal less greater-equal greater slash))
+
 (defun parse-number (str)
   (with-input-from-string (stream str) (read stream)))
 
@@ -39,7 +51,7 @@
 (setf (gethash "var" *keywords*) 'var)
 (setf (gethash "while" *keywords*) 'while)
 
-(defun scan-tokens (chars &optional tokens current)
+(defun scan-tokens (chars &optional tokens)
   (if (null chars)
       (if (null tokens)
           (list (create-eof))
@@ -77,31 +89,31 @@
      ((or (eq c #\NewLine ) (eq c #\Space)) (scan-token (cdr chars)))
 
      ((eq c #\" ) (scan-token (cdr chars) "" 'string))
-     ((eq c #\( ) (values (cdr chars) (create-token 'left-paren (string c) nil 0)))
-     ((eq c #\) ) (values (cdr chars) (create-token 'right-paren (string c) nil 0)))
-     ((eq c #\{ ) (values (cdr chars) (create-token 'left-brace (string c) nil 0)))
-     ((eq c #\} ) (values (cdr chars) (create-token 'right-brace (string c) nil 0)))
-     ((eq c #\, ) (values (cdr chars) (create-token 'comma (string c) nil 0)))
-     ((eq c #\. ) (values (cdr chars) (create-token 'dot (string c) nil 0)))
-     ((eq c #\- ) (values (cdr chars) (create-token 'minus (string c) nil 0)))
-     ((eq c #\+ ) (values (cdr chars) (create-token 'plus (string c) nil 0)))
-     ((eq c #\; ) (values (cdr chars) (create-token 'semi-colon (string c) nil 0)))
-     ((eq c #\* ) (values (cdr chars) (create-token 'star (string c) nil 0)))
+     ((eq c #\( ) (values (cdr chars) (create-left-paren (string c))))
+     ((eq c #\) ) (values (cdr chars) (create-right-paren (string c))))
+     ((eq c #\{ ) (values (cdr chars) (create-left-brace (string c))))
+     ((eq c #\} ) (values (cdr chars) (create-right-brace (string c))))
+     ((eq c #\, ) (values (cdr chars) (create-comma (string c))))
+     ((eq c #\. ) (values (cdr chars) (create-dot (string c))))
+     ((eq c #\- ) (values (cdr chars) (create-minus (string c))))
+     ((eq c #\+ ) (values (cdr chars) (create-plus (string c))))
+     ((eq c #\; ) (values (cdr chars) (create-semi-colon (string c))))
+     ((eq c #\* ) (values (cdr chars) (create-star (string c))))
      ((eq c #\! ) (if (eq (cadr chars) #\=)
-                      (values (cddr chars) (create-token 'bang-equal "!=" nil 0))
-                      (values (cdr chars) (create-token 'bang (string c) nil 0))))
+                      (values (cddr chars) (create-bang-equal "!="))
+                      (values (cdr chars) (create-bang (string c)))))
      ((eq c #\= ) (if (eq (cadr chars) #\=)
-                      (values (cddr chars) (create-token 'equal-equal "==" nil 0))
-                      (values (cdr chars) (create-token 'equal (string c)nil 0))))
+                      (values (cddr chars) (create-equal-equal "=="))
+                      (values (cdr chars) (create-equal (string c)))))
      ((eq c #\< ) (if (eq (cadr chars) #\=)
-                      (values (cddr chars) (create-token 'less-equal "<=" nil 0))
-                      (values (cdr chars) (create-token 'less (string c)  nil 0))))
+                      (values (cddr chars) (create-less-equal "<="))
+                      (values (cdr chars) (create-less (string c)))))
      ((eq c #\> ) (if (eq (cadr chars) #\=)
-                      (values (cddr chars) (create-token 'greater-equal ">=" nil 0))
-                      (values (cdr chars) (create-token 'greater (string c) nil 0))))
+                      (values (cddr chars) (create-greater-equal ">="))
+                      (values (cdr chars) (create-greater (string c)))))
      ((eq c #\/ ) (if (eq (cadr chars) #\/)
                       (scan-token (cddr chars) nil 'comment)
-                      (values (cdr chars) (create-token 'slash (string c) nil 0))))
+                      (values (cdr chars) (create-slash (string c)))))
      (t (error "Unexpected character ~C" c)))))
 
 (let ((pack (find-package :lexer)))
