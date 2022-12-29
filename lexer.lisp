@@ -25,7 +25,7 @@
 (create-helpers (and class else false for if nil or print return super this true
                    var while number string left-paren right-paren left-brace right-brace
                    comma dot minus plus semi-colon star bang-equal bang equal-equal equal
-                   less-equal less greater-equal greater slash))
+                   less-equal less greater-equal greater slash identifier fun))
 
 (defun parse-number (str)
   (with-input-from-string (stream str) (read stream)))
@@ -83,7 +83,7 @@
             ; This if statement insures that if we are in 'float mode we won't overwrite it with 'integer
             (scan-token (cdr chars) updated-lexeme (if (not lexeme-type) 'integer lexeme-type))
             ; There might be a problem with text like 123abc. How should this be handled?
-            (values (cdr chars) (create-token 'number (parse-number updated-lexeme) nil 0)))))
+            (values (cdr chars) (create-number (parse-number updated-lexeme))))))
      ((and (eq c #\.) (eq lexeme-type 'integer)) (scan-token (cdr chars) (concatenate 'string current-lexeme (string c)) 'float))
 
      ((or (eq c #\NewLine ) (eq c #\Space)) (scan-token (cdr chars)))
