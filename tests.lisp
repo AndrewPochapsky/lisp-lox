@@ -136,8 +136,6 @@
         (progn
           (assert (string= "(/ (* (group (+ 5 2)) (group (- 5 2))) 3)" (printer:accept tree)))))))
 
-(test-parser-works)
-
 (defun run-lexer-tests()
     (progn
       (test-lexer-works-simple)

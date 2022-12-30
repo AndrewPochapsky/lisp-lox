@@ -15,7 +15,7 @@
 
 (defun run (source)
   (print
-    (printer:accept
+    (interpreter:interpret
       (parser:parse
         (lexer:scan-tokens (coerce source 'list))))))
 
