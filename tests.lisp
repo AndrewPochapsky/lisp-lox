@@ -89,6 +89,20 @@
                             (lexer:create-right-brace "}")
                             (lexer:create-eof)) (lexer:scan-tokens (coerce source 'list)) #'tokens-eq))))
 
+(defun test-lexer-works-no-trailing-space()
+      (let ((source "(1 + 1)"))
+        (assert (lists-eq (list
+                            (lexer:create-left-paren "(")
+                            (lexer:create-number 1)
+                            (lexer:create-plus "+")
+                            (lexer:create-number 1)
+                            (lexer:create-right-paren ")")
+                            (lexer:create-eof))
+                          (lexer:scan-tokens (coerce source 'list)) #'tokens-eq))))
+
+(lexer:scan-tokens (coerce "(1+1)" 'list))
+(test-lexer-works-no-trailing-space)
+
 (defun test-lexer-works-simple()
       (let ((source (format nil "
           (123) + 12.6
@@ -116,11 +130,24 @@
       (let ((source ""))
         (assert (lists-eq (list (lexer:create-eof)) (lexer:scan-tokens (coerce source 'list)) #'tokens-eq ))))
 
-(defun run-tests()
+(defun test-parser-works()
+    (let ((source "(5 + 2) * (5 - 2) / 3 "))
+      (let ((tree (parser:parse (lexer:scan-tokens (coerce source 'list)))))
+        (progn
+          (assert (string= "(/ (* (group (+ 5 2)) (group (- 5 2))) 3)" (printer:accept tree)))))))
+
+(test-parser-works)
+
+(defun run-lexer-tests()
     (progn
       (test-lexer-works-simple)
       (test-lexer-works)
+      (test-lexer-works-no-trailing-space)
       (test-lexer-works-empty)))
 
-(run-tests)
+(defun run-parser-tests()
+    (progn
+      (test-parser-works)))
 
+(run-lexer-tests)
+(run-parser-tests)

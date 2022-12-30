@@ -87,7 +87,7 @@
                                             (expr (first result))
                                             (rest (second result)))
                                        (if (string= (symbol-name (lexer:token-type (car rest))) "RIGHT-PAREN")
-                                           (list (ast:make-grouping :expression expr) (cdr input))
+                                           (list (ast:make-grouping :expression expr) (cdr rest))
                                            (error "Expected ')' after expression."))))
       (t (error "Expected expression but got unexpected token ~a" (car input))))))
 

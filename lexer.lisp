@@ -53,8 +53,8 @@
 
 (defun scan-tokens (chars &optional tokens)
   (if (null chars)
-      (if (null tokens)
-          (list (create-eof))
+      (if (or (null tokens) (not (eq (token-type (car tokens)) 'eof)))
+          (reverse (push (create-eof) tokens))
           (reverse tokens))
         (multiple-value-bind (new-chars token) (scan-token chars)
           (scan-tokens new-chars (push token tokens)))))
