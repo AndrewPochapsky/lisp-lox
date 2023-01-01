@@ -87,6 +87,17 @@
       (environment:assign *environment* name value)
       value)))
 
+(ast:defvisit block-stmt (statements)
+  (execute-block statements (environment:create-env-with-enclosing *environment*)))
+
+(defun execute-block (statements new-env)
+  (let ((previous-env *environment*))
+    (progn
+      (setf *environment* new-env)
+      (dolist (statement statements)
+        (accept statement))
+      (setf *environment* previous-env))))
+
 (defun check-number (operand)
   (if (numberp operand)
       T
@@ -123,6 +134,7 @@
     ((ast:print-stmt) (visit-print-stmt object))
     ((ast:variable-decl) (visit-variable-decl object))
     ((ast:variable-ref) (visit-variable-ref object))
+    ((ast:block-stmt) (visit-block-stmt object))
     ((ast:assign) (visit-assign object))
     ((ast:binary) (visit-binary object))
     ((ast:unary) (visit-unary object))

@@ -8,6 +8,7 @@
 ;;; Statements
 (defstruct print-stmt expression)
 (defstruct expression-stmt expression)
+(defstruct block-stmt statements)
 
 ;;; Expressions
 (defstruct binary left operator right)

@@ -35,9 +35,15 @@
         (error "Expected variable name"))))
 
 (defun statement (input)
-  (if (string= (symbol-name (lexer:token-type (car input))) "PRINT")
-      (print-statement (cdr input))
-      (expression-statement input)))
+  (let ((token-type (lexer:token-type (car input))))
+    (cond
+      ((string= token-type 'print) (print-statement (cdr input)))
+      ((string= token-type 'left-brace)
+       (let* ((result (block-statement (cdr input)))
+              (statements (first result))
+              (rest (second result)))
+         (list (ast:make-block-stmt :statements statements) rest)))
+      (t (expression-statement input)))))
 
 (defun print-statement (input)
   (let* ((result (expression input))
@@ -54,6 +60,21 @@
     (if (string= (symbol-name (lexer:token-type (car rest))) "SEMI-COLON")
         (list (ast:make-expression-stmt :expression expr) (cdr rest))
         (error "Expected ';' after expression"))))
+
+(defun block-statement (input)
+  (labels ((helper (statements input)
+             (let ((token-type (lexer:token-type (car input))))
+               (cond
+                 ((string= token-type 'right-brace)
+                  (list (reverse statements) (cdr input)))
+                 ((string= token-type 'eof)
+                  (error "Expected '}' after block"))
+                 (t (let* ((result (decl input))
+                           (value (first result))
+                           (rest (second result)))
+                      (helper (push value statements) rest)))))))
+    (helper '() input)))
+
 
 (defun expression (input)
   (assignment input))
