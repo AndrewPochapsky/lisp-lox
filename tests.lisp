@@ -131,21 +131,22 @@
         (assert (lists-eq (list (lexer:create-eof)) (lexer:scan-tokens (coerce source 'list)) #'tokens-eq ))))
 
 (defun test-parser-works()
-    (let ((source "(5 + 2) * (5 - 2) / 3 "))
+    (let ((source "(5 + 2) * (5 - 2) / 3;"))
       (let ((tree (parser:parse (lexer:scan-tokens (coerce source 'list)))))
         (progn
           (assert (string= "(/ (* (group (+ 5 2)) (group (- 5 2))) 3)" (printer:accept tree)))))))
+(test-parser-works)
 
 (defun test-interpreter-literal-number()
-  (let ((tree (parser:parse (lexer:scan-tokens (coerce "1 " 'list)))))
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "1;" 'list)))))
     (assert (eq 1 (interpreter:interpret tree)))))
 
 (defun test-interpreter-literal-string()
-  (let ((tree (parser:parse (lexer:scan-tokens (coerce "\"Hello\"" 'list)))))
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "\"Hello\";" 'list)))))
     (assert (string= "Hello" (interpreter:interpret tree)))))
 
 (defun test-interpreter-strings-added()
-  (let ((tree (parser:parse (lexer:scan-tokens (coerce "\"Hello\" + \"World\"" 'list)))))
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "\"Hello\" + \"World\";" 'list)))))
     (assert (string= "HelloWorld" (interpreter:interpret tree)))))
 
 (defun test-interpreter-arithmetic()
@@ -186,5 +187,11 @@
       (test-interpreter-boolean-expressions)))
 
 (run-lexer-tests)
-(run-parser-tests)
+;(run-parser-tests)
 (run-interpreter-tests)
+
+(defun test()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "1;" 'list)))))
+    tree))
+
+(test)

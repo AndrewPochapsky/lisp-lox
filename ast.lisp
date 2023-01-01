@@ -3,10 +3,19 @@
 
 (in-package #:ast)
 
+(defstruct variable-decl name initializer)
+
+;;; Statements
+(defstruct print-stmt expression)
+(defstruct expression-stmt expression)
+
+;;; Expressions
 (defstruct binary left operator right)
 (defstruct grouping expression)
 (defstruct literal value)
 (defstruct unary operator right)
+(defstruct variable-ref name)
+(defstruct assign name expression)
 
 (defun accept (object visitor)
   "Accepts an OBJECT and a VISITOR function and calls the VISITOR function with the OBJECT as an argument."

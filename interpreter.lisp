@@ -4,6 +4,8 @@
 
 (in-package #:interpreter)
 
+(defparameter *environment* (make-hash-table :test #'equal))
+
 (ast:defvisit literal (value) value)
 (ast:defvisit grouping (expression) (accept expression))
 (ast:defvisit unary (operator right)
@@ -62,6 +64,29 @@
          (* left right)))
       (t nil))))
 
+(ast:defvisit expression-stmt (expression)
+  (progn
+    (accept expression)
+    nil))
+
+(ast:defvisit print-stmt (expression)
+  (print
+    (accept expression)))
+
+(ast:defvisit variable-decl (name initializer)
+  (if (null initializer)
+      (environment:define *environment* name initializer)
+      (environment:define *environment* name (accept initializer))))
+
+(ast:defvisit variable-ref (name)
+  (environment:get-value *environment* name))
+
+(ast:defvisit assign (name expression)
+  (let ((value (accept expression)))
+    (progn
+      (environment:assign *environment* name value)
+      value)))
+
 (defun check-number (operand)
   (if (numberp operand)
       T
@@ -94,6 +119,11 @@
 (defun visit-interpreter (object)
   "Implements the operation for OBJECT using the visitor pattern."
   (case (type-of object)
+    ((ast:expression-stmt) (visit-expression-stmt object))
+    ((ast:print-stmt) (visit-print-stmt object))
+    ((ast:variable-decl) (visit-variable-decl object))
+    ((ast:variable-ref) (visit-variable-ref object))
+    ((ast:assign) (visit-assign object))
     ((ast:binary) (visit-binary object))
     ((ast:unary) (visit-unary object))
     ((ast:grouping) (visit-grouping object))
@@ -102,5 +132,9 @@
 (defun accept (obj)
     (ast:accept obj #'visit-interpreter))
 
-(defun interpret (expression)
-  (accept expression))
+(defun interpret (expressions)
+  (if (null expressions)
+      nil
+      (progn
+        (accept (car expressions))
+        (interpret (cdr expressions)))))
