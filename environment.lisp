@@ -1,22 +1,27 @@
 (defpackage :environment
   (:use :common-lisp)
-  (:export #:define #:get-value #:assign))
+  (:export #:define #:get-value #:assign #:environment #:create-env))
 
 (in-package #:environment)
 
-(defun define (table name-token value)
-  (setf (gethash (lexer:token-lexeme name-token) table) value))
+(defstruct environment table)
 
-(defun get-value (table name-token)
+(defun create-env()
+    (make-environment :table (make-hash-table :test #'equal)))
+
+(defun define (env name-token value)
+  (setf (gethash (lexer:token-lexeme name-token) (environment-table env)) value))
+
+(defun get-value (env name-token)
   (let* ((name (lexer:token-lexeme name-token))
-         (value (gethash name table :not-found)))
+         (value (gethash name (environment-table env) :not-found)))
     (if (not (eq value :not-found))
         value
         (error "Undefined variable ~a." name))))
 
-(defun assign (table name-token value)
+(defun assign (env name-token value)
   (let* ((name (lexer:token-lexeme name-token))
-         (existing-value (gethash name table :not-found)))
+         (existing-value (gethash name (environment-table env) :not-found)))
     (if (eq existing-value :not-found)
         (error "Undefined variable ~a." name)
-        (setf (gethash name table) value))))
+        (setf (gethash name (environment-table env)) value))))

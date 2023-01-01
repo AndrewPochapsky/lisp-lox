@@ -4,7 +4,7 @@
 
 (in-package #:interpreter)
 
-(defparameter *environment* (make-hash-table :test #'equal))
+(defparameter *environment* (environment:create-env))
 
 (ast:defvisit literal (value) value)
 (ast:defvisit grouping (expression) (accept expression))
