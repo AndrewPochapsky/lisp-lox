@@ -77,6 +77,7 @@
             (let ((keyword (gethash updated-lexeme *keywords*)))
               (values (cdr chars) (create-token (if keyword keyword 'identifier) updated-lexeme nil 0))))))
 
+     ; TODO: Fix this when the last character is a number.
      ((digit-char-p c)
       (let ((updated-lexeme (concatenate 'string current-lexeme (string c))))
         (if (or (digit-char-p (cadr chars)) (and (eq (cadr chars) #\.) (eq lexeme-type 'integer)))

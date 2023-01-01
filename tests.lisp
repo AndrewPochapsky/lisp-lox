@@ -136,6 +136,34 @@
         (progn
           (assert (string= "(/ (* (group (+ 5 2)) (group (- 5 2))) 3)" (printer:accept tree)))))))
 
+(defun test-interpreter-literal-number()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "1 " 'list)))))
+    (assert (eq 1 (interpreter:interpret tree)))))
+
+(defun test-interpreter-literal-string()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "\"Hello\"" 'list)))))
+    (assert (string= "Hello" (interpreter:interpret tree)))))
+
+(defun test-interpreter-strings-added()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "\"Hello\" + \"World\"" 'list)))))
+    (assert (string= "HelloWorld" (interpreter:interpret tree)))))
+
+(defun test-interpreter-arithmetic()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "(5 + 2) * (5 - 2) / 3;" 'list)))))
+    (assert (eq 7 (interpreter:interpret tree)))))
+
+(defun test-interpreter-boolean-equality()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "true == true;" 'list)))))
+    (assert (eq T (interpreter:interpret tree)))))
+
+(defun test-interpreter-boolean-inequality()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "true != true;" 'list)))))
+    (assert (eq nil (interpreter:interpret tree)))))
+
+(defun test-interpreter-boolean-expressions()
+  (let ((tree (parser:parse (lexer:scan-tokens (coerce "2 < 3 == 4 < 5;" 'list)))))
+    (assert (eq T (interpreter:interpret tree)))))
+
 (defun run-lexer-tests()
     (progn
       (test-lexer-works-simple)
@@ -147,5 +175,16 @@
     (progn
       (test-parser-works)))
 
+(defun run-interpreter-tests()
+    (progn
+      (test-interpreter-literal-number)
+      (test-interpreter-literal-string)
+      (test-interpreter-strings-added)
+      (test-interpreter-arithmetic)
+      (test-interpreter-boolean-equality)
+      (test-interpreter-boolean-inequality)
+      (test-interpreter-boolean-expressions)))
+
 (run-lexer-tests)
 (run-parser-tests)
+(run-interpreter-tests)
