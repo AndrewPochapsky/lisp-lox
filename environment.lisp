@@ -1,6 +1,6 @@
 (defpackage :environment
   (:use :common-lisp)
-  (:export #:define #:get-value #:assign #:environment #:create-env #:create-env-with-enclosing))
+  (:export #:define #:get-value #:assign #:environment #:create-env #:create-env-with-enclosing #:define-with-name))
 
 (in-package #:environment)
 
@@ -14,6 +14,9 @@
 
 (defun define (env name-token value)
   (setf (gethash (lexer:token-lexeme name-token) (environment-table env)) value))
+
+(defun define-with-name (env name value)
+  (setf (gethash name (environment-table env)) value))
 
 (defun get-value (env name-token)
   (let* ((name (lexer:token-lexeme name-token))

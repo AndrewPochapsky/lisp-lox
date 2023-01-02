@@ -137,7 +137,6 @@
       (let ((tree (parser:parse (lexer:scan-tokens (coerce source 'list)))))
         (progn
           (assert (string= "(/ (* (group (+ 5 2)) (group (- 5 2))) 3)" (printer:accept tree)))))))
-(test-parser-works)
 
 (defun test-interpreter-literal-number()
   (let ((tree (parser:parse (lexer:scan-tokens (coerce "1;" 'list)))))

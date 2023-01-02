@@ -20,6 +20,7 @@
 (defstruct unary operator right)
 (defstruct variable-ref name)
 (defstruct assign name expression)
+(defstruct call callee paren arguments)
 
 (defun accept (object visitor)
   "Accepts an OBJECT and a VISITOR function and calls the VISITOR function with the OBJECT as an argument."
@@ -40,3 +41,6 @@
 
 (let ((pack (find-package :ast)))
   (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
+
+(defun current-time-in-milliseconds ()
+  (floor (/ (get-internal-real-time) 1000)))

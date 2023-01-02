@@ -4,7 +4,26 @@
 
 (in-package #:interpreter)
 
-(defparameter *environment* (environment:create-env))
+(defparameter *globals* (environment:create-env))
+(defstruct clock arity call)
+
+(environment:define-with-name *globals* "clock"
+  (make-clock
+    :arity (lambda () 0)
+    :call (lambda (arguments) (/ (get-internal-real-time) 1000))))
+
+(defparameter *environment* *globals*)
+
+(defun call (func arguments)
+  (case (type-of func)
+    ((clock) (funcall (clock-call func) arguments))
+    (t (error "Invalid function"))))
+
+(defun arity (func)
+  (case (type-of func)
+    ((clock) (funcall (clock-arity func)))
+    (t (error "Invalid function"))))
+
 
 (ast:defvisit literal (value) value)
 (ast:defvisit grouping (expression) (accept expression))
@@ -113,6 +132,13 @@
         (if (not (is-truthy left))
             left
             (accept right)))))
+
+(ast:defvisit call (callee arguments)
+  (let ((callee (accept callee))
+        (arguments (mapcar #'accept arguments)))
+    (if (eq (length arguments) (arity callee))
+        (call callee arguments)
+        (error "Expected ~a arguments but got ~a." (arity callee) (length arguments)))))
 
 (defun execute-block (statements new-env)
   (let ((previous-env *environment*))
