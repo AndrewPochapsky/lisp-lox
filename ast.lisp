@@ -13,6 +13,7 @@
 
 ;;; Expressions
 (defstruct binary left operator right)
+(defstruct logical left operator right)
 (defstruct grouping expression)
 (defstruct literal value)
 (defstruct unary operator right)

@@ -100,6 +100,8 @@
                             (lexer:create-eof))
                           (lexer:scan-tokens (coerce source 'list)) #'tokens-eq))))
 
+(parser:parse (lexer:scan-tokens (coerce "x = 2;" 'list)))
+
 (lexer:scan-tokens (coerce "(1+1)" 'list))
 (test-lexer-works-no-trailing-space)
 

@@ -97,6 +97,17 @@
           (accept else-branch)
           nil)))
 
+(ast:defvisit logical (left operator right)
+  (let ((left (accept left)))
+    (if (string= (lexer:token-type operator) 'or)
+        (if (is-truthy left)
+            left
+            (accept right))
+        (if (not (is-truthy left))
+            left
+            (accept right)))))
+
+
 (defun execute-block (statements new-env)
   (let ((previous-env *environment*))
     (progn
@@ -148,6 +159,7 @@
     ((ast:variable-ref) (visit-variable-ref object))
     ((ast:block-stmt) (visit-block-stmt object))
     ((ast:if-stmt) (visit-if-stmt object))
+    ((ast:logical) (visit-logical object))
     ((ast:assign) (visit-assign object))
     ((ast:binary) (visit-binary object))
     ((ast:unary) (visit-unary object))

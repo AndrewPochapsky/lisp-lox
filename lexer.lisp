@@ -41,7 +41,7 @@
 (setf (gethash "for" *keywords*) 'for)
 (setf (gethash "fun" *keywords*) 'fun)
 (setf (gethash "if" *keywords*) 'if)
-(setf (gethash "nil" *keywords*) 'nil)
+(setf (gethash "null" *keywords*) 'null)
 (setf (gethash "or" *keywords*) 'or)
 (setf (gethash "print" *keywords*) 'print)
 (setf (gethash "return" *keywords*) 'return)
