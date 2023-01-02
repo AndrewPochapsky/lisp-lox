@@ -188,6 +188,7 @@
     ((ast:variable-ref) (visit-variable-ref object))
     ((ast:block-stmt) (visit-block-stmt object))
     ((ast:if-stmt) (visit-if-stmt object))
+    ((ast:call) (visit-call object))
     ((ast:logical) (visit-logical object))
     ((ast:assign) (visit-assign object))
     ((ast:binary) (visit-binary object))
