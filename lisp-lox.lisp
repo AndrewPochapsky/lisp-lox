@@ -14,9 +14,8 @@
       (run contents))))
 
 (defun run (source)
-  (print
-    (interpreter:interpret
-      (parser:parse
-        (lexer:scan-tokens (coerce source 'list))))))
+  (interpreter:interpret
+    (parser:parse
+      (lexer:scan-tokens (coerce source 'list)))))
 
 (main "test2.lox")

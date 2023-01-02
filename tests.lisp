@@ -100,7 +100,7 @@
                             (lexer:create-eof))
                           (lexer:scan-tokens (coerce source 'list)) #'tokens-eq))))
 
-(parser:parse (lexer:scan-tokens (coerce "x = 2;" 'list)))
+(parser:parse (lexer:scan-tokens (coerce "var x = 2;" 'list)))
 
 (lexer:scan-tokens (coerce "(1+1)" 'list))
 (test-lexer-works-no-trailing-space)
@@ -191,9 +191,3 @@
 (run-lexer-tests)
 ;(run-parser-tests)
 (run-interpreter-tests)
-
-(defun test()
-  (let ((tree (parser:parse (lexer:scan-tokens (coerce "1;" 'list)))))
-    tree))
-
-(test)

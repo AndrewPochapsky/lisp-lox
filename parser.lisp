@@ -38,6 +38,7 @@
   (let ((token-type (lexer:token-type (car input))))
     (cond
       ((string= token-type 'if) (if-statement (cdr input)))
+      ((string= token-type 'for) (for-statement (cdr input)))
       ((string= token-type 'while) (while-statement (cdr input)))
       ((string= token-type 'print) (print-statement (cdr input)))
       ((string= token-type 'left-brace)
@@ -59,6 +60,44 @@
               (list (ast:make-while-stmt :condition condition :body body) rest))
             (error "Expected ')' after condition.")))
       (error "Expected '(' after 'while'.")))
+
+(defun for-statement (input)
+  (if (string= (lexer:token-type (car input)) 'left-paren)
+      (let* ((token-type (lexer:token-type (cadr input)))
+             (init-result
+               (cond
+                 ((string= token-type 'semi-colon) (list nil (cddr input)))
+                 ((string= token-type 'var) (var-declaration (cddr input)))
+                 (t (expression-statement (cdr input)))))
+             (condition-result
+               (if (string= (lexer:token-type (car (second init-result))) 'semi-colon)
+                   (list nil (cdr (second init-result)))
+                   (let ((result (expression (second init-result))))
+                     (if (string= (lexer:token-type (car (second result))) 'semi-colon)
+                         (list (first result) (cdr (second result)))
+                         (error "Expected ';' after loop condition")))))
+             (increment-result
+               (if (not (string= (lexer:token-type (car (second condition-result))) 'right-paren))
+                   (let ((result (expression (second condition-result))))
+                     (if (string= (lexer:token-type (car (second result))) 'right-paren)
+                         (list (first result) (cdr (second result)))
+                         (error "Expected ')' after for clauses")))
+                   (list nil (cdr (second condition-result)))))
+             (body-result (statement (second increment-result)))
+             (body
+               (if (not (null (first increment-result)))
+                   (ast:make-block-stmt :statements (list (first body-result) (first increment-result)))
+                   (first body-result)))
+             (body
+               (if (null (first condition-result))
+                   (ast:make-while-stmt :condition (ast:make-literal :value 'true) :body body)
+                   (ast:make-while-stmt :condition (first condition-result) :body body)))
+             (body
+               (if (not (null (first init-result)))
+                   (ast:make-block-stmt :statements (list (first init-result) body))
+                   body)))
+        (list body (second body-result)))
+    (error "Expected '(' after 'for'.")))
 
 (defun if-statement (input)
   (if (string= (lexer:token-type (car input)) 'left-paren)
