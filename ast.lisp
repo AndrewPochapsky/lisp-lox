@@ -4,6 +4,7 @@
 (in-package #:ast)
 
 (defstruct variable-decl name initializer)
+(defstruct function-decl name params body)
 
 ;;; Statements
 (defstruct print-stmt expression)
@@ -11,6 +12,7 @@
 (defstruct block-stmt statements)
 (defstruct if-stmt condition then-branch else-branch)
 (defstruct while-stmt condition body)
+(defstruct function
 
 ;;; Expressions
 (defstruct binary left operator right)
@@ -41,6 +43,3 @@
 
 (let ((pack (find-package :ast)))
   (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
-
-(defun current-time-in-milliseconds ()
-  (floor (/ (get-internal-real-time) 1000)))
