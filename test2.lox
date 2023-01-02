@@ -1,5 +1,7 @@
-var a = 1;
-{
-  a = 3;
+var x = "hello";
+
+if (x) {
+    print "x is truthy";
+} else {
+    print "x is falsey";
 }
-print a;

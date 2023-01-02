@@ -9,6 +9,7 @@
 (defstruct print-stmt expression)
 (defstruct expression-stmt expression)
 (defstruct block-stmt statements)
+(defstruct if-stmt condition then-branch else-branch)
 
 ;;; Expressions
 (defstruct binary left operator right)

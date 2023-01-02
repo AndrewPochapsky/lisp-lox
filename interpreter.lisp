@@ -90,6 +90,13 @@
 (ast:defvisit block-stmt (statements)
   (execute-block statements (environment:create-env-with-enclosing *environment*)))
 
+(ast:defvisit if-stmt (condition then-branch else-branch)
+  (if (is-truthy (accept condition))
+      (accept then-branch)
+      (if (not (null else-branch))
+          (accept else-branch)
+          nil)))
+
 (defun execute-block (statements new-env)
   (let ((previous-env *environment*))
     (progn
@@ -117,15 +124,20 @@
     ((and (stringp a) (stringp b)) (string= a b))
     (t (eq a b))))
 
-(defun is-truthy (obj)
-  (let ((value (ast:literal-value obj)))
-    (if (null value)
-        nil
-        (let ((name (symbol-name value)))
-          (cond
-            ((string= name "TRUE") T)
-            ((string= name "FALSE") nil)
-            (t T))))))
+(defun is-truthy (value)
+  (if (null value)
+      nil
+      (if (symbolp value)
+          (let ((name (symbol-name value)))
+            (cond
+              ((string= name "TRUE") T)
+              ((string= name "FALSE") nil)
+              (t T)))
+          T)))
+
+
+(if 'false (print "hi"))
+
 
 (defun visit-interpreter (object)
   "Implements the operation for OBJECT using the visitor pattern."
@@ -135,6 +147,7 @@
     ((ast:variable-decl) (visit-variable-decl object))
     ((ast:variable-ref) (visit-variable-ref object))
     ((ast:block-stmt) (visit-block-stmt object))
+    ((ast:if-stmt) (visit-if-stmt object))
     ((ast:assign) (visit-assign object))
     ((ast:binary) (visit-binary object))
     ((ast:unary) (visit-unary object))
