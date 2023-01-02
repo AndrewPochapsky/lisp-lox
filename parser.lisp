@@ -38,6 +38,7 @@
   (let ((token-type (lexer:token-type (car input))))
     (cond
       ((string= token-type 'if) (if-statement (cdr input)))
+      ((string= token-type 'while) (while-statement (cdr input)))
       ((string= token-type 'print) (print-statement (cdr input)))
       ((string= token-type 'left-brace)
        (let* ((result (block-statement (cdr input)))
@@ -45,6 +46,19 @@
               (rest (second result)))
          (list (ast:make-block-stmt :statements statements) rest)))
       (t (expression-statement input)))))
+
+(defun while-statement (input)
+  (if (string= (lexer:token-type (car input)) 'left-paren)
+      (let* ((result (expression (cdr input)))
+             (condition (first result))
+             (rest (second result)))
+        (if (string= (lexer:token-type (car rest)) 'right-paren)
+            (let* ((result (statement (cdr rest)))
+                   (body (first result))
+                   (rest (second result)))
+              (list (ast:make-while-stmt :condition condition :body body) rest))
+            (error "Expected ')' after condition.")))
+      (error "Expected '(' after 'while'.")))
 
 (defun if-statement (input)
   (if (string= (lexer:token-type (car input)) 'left-paren)

@@ -97,6 +97,13 @@
           (accept else-branch)
           nil)))
 
+(ast:defvisit while-stmt (condition body)
+  (if (is-truthy (accept condition))
+      (progn
+        (accept body)
+        (visit-while-stmt ast:obj))
+      nil))
+
 (ast:defvisit logical (left operator right)
   (let ((left (accept left)))
     (if (string= (lexer:token-type operator) 'or)
@@ -106,7 +113,6 @@
         (if (not (is-truthy left))
             left
             (accept right)))))
-
 
 (defun execute-block (statements new-env)
   (let ((previous-env *environment*))
@@ -146,15 +152,12 @@
               (t T)))
           T)))
 
-
-(if 'false (print "hi"))
-
-
 (defun visit-interpreter (object)
   "Implements the operation for OBJECT using the visitor pattern."
   (case (type-of object)
     ((ast:expression-stmt) (visit-expression-stmt object))
     ((ast:print-stmt) (visit-print-stmt object))
+    ((ast:while-stmt) (visit-while-stmt object))
     ((ast:variable-decl) (visit-variable-decl object))
     ((ast:variable-ref) (visit-variable-ref object))
     ((ast:block-stmt) (visit-block-stmt object))

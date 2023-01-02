@@ -10,6 +10,7 @@
 (defstruct expression-stmt expression)
 (defstruct block-stmt statements)
 (defstruct if-stmt condition then-branch else-branch)
+(defstruct while-stmt condition body)
 
 ;;; Expressions
 (defstruct binary left operator right)
