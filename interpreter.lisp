@@ -14,14 +14,33 @@
 
 (defparameter *environment* *globals*)
 
+(defstruct lox-function arity call)
+
+(defun create-lox-function (params body)
+    (let ((arity (lambda () (length params)))
+          (call (lambda (arguments)
+                  (let ((env (environment:create-env-with-enclosing *globals*)))
+                    (labels ((helper (params arguments)
+                               (if (not (null params))
+                                   (progn
+                                     (environment:define-with-name env (lexer:token-lexeme (car params)) (car arguments))
+                                     (helper (cdr params) (cdr arguments)))
+                                   nil)))
+                      (progn
+                        (helper params arguments)
+                        (execute-block body env)))))))
+      (make-lox-function :arity arity :call call)))
+
 (defun call (func arguments)
   (case (type-of func)
     ((clock) (funcall (clock-call func) arguments))
-    (t (error "Invalid function"))))
+    ((lox-function) (funcall (lox-function-call func) arguments))
+    (t (error "Invalid function type"))))
 
 (defun arity (func)
   (case (type-of func)
     ((clock) (funcall (clock-arity func)))
+    ((lox-function) (funcall (lox-function-arity func)))
     (t (error "Invalid function"))))
 
 
@@ -140,6 +159,10 @@
         (call callee arguments)
         (error "Expected ~a arguments but got ~a." (arity callee) (length arguments)))))
 
+(ast:defvisit function-decl (name params body)
+  (let ((func (create-lox-function params body)))
+    (environment:define *environment* name func)))
+
 (defun execute-block (statements new-env)
   (let ((previous-env *environment*))
     (progn
@@ -185,6 +208,7 @@
     ((ast:print-stmt) (visit-print-stmt object))
     ((ast:while-stmt) (visit-while-stmt object))
     ((ast:variable-decl) (visit-variable-decl object))
+    ((ast:function-decl) (visit-function-decl object))
     ((ast:variable-ref) (visit-variable-ref object))
     ((ast:block-stmt) (visit-block-stmt object))
     ((ast:if-stmt) (visit-if-stmt object))

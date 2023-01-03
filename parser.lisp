@@ -16,8 +16,8 @@
 (defun decl (input)
   (let ((token-type (lexer:token-type (car input))))
     (cond
-      ((string= token-type 'var) (var-declaration (cdr input) "function"))
-      ((string= token-type 'fun) (function-declaration (cdr input)))
+      ((string= token-type 'var) (var-declaration (cdr input)))
+      ((string= token-type 'fun) (function-declaration (cdr input) "function"))
       (t (statement input)))))
 
 (defun function-declaration (input kind)
@@ -320,7 +320,7 @@
                  (arguments (first result))
                  (rest (second result)))
             (if (string= (lexer:token-type (car rest)) 'right-paren)
-                (list (ast:make-call :callee callee :paren nil :arguments arguments) rest)
+                (list (ast:make-call :callee callee :paren nil :arguments arguments) (cdr rest))
                 (error "Expected ')' after arguments.")))))
     (list (ast:make-call :callee callee :paren nil :arguments '()) (cdr input))))
 
