@@ -12,7 +12,7 @@
 (defstruct block-stmt statements)
 (defstruct if-stmt condition then-branch else-branch)
 (defstruct while-stmt condition body)
-(defstruct function
+(defstruct return-stmt expression)
 
 ;;; Expressions
 (defstruct binary left operator right)
@@ -43,3 +43,14 @@
 
 (let ((pack (find-package :ast)))
   (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
+
+(define-condition integer-error (error)
+  ((integer-value :initarg :integer-value :reader integer-value)))
+
+(defun raise-integer-error (integer-value)
+  (error 'integer-error :integer-value integer-value))
+
+(handler-case
+    (raise-integer-error 42)
+  (integer-error (c)
+    (format t "An integer error occurred with value ~D" (integer-value c))))

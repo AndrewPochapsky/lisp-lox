@@ -18,4 +18,4 @@
     (parser:parse
       (lexer:scan-tokens (coerce source 'list)))))
 
-(main "function.lox")
+(main "fib.lox")

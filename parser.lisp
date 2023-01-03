@@ -71,6 +71,7 @@
     (cond
       ((string= token-type 'if) (if-statement (cdr input)))
       ((string= token-type 'for) (for-statement (cdr input)))
+      ((string= token-type 'return) (return-statement (cdr input)))
       ((string= token-type 'while) (while-statement (cdr input)))
       ((string= token-type 'print) (print-statement (cdr input)))
       ((string= token-type 'left-brace)
@@ -79,6 +80,16 @@
               (rest (second result)))
          (list (ast:make-block-stmt :statements statements) rest)))
       (t (expression-statement input)))))
+
+(defun return-statement (input)
+  (if (string= (lexer:token-type (car input)) 'semi-colon)
+      (list (ast:make-return-stmt :expression nil) (cdr input))
+      (let* ((result (expression input))
+             (expr (first result))
+             (rest (second result)))
+        (if (string= (lexer:token-type (car rest)) 'semi-colon)
+            (list (ast:make-return-stmt :expression expr) (cdr rest))
+            (error "Expected ';' after return value.")))))
 
 (defun while-statement (input)
   (if (string= (lexer:token-type (car input)) 'left-paren)

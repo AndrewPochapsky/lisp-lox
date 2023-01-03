@@ -12,10 +12,12 @@
     :arity (lambda () 0)
     :call (lambda (arguments) (/ (get-internal-real-time) 1000))))
 
+(define-condition lox-return (error)
+  ((value :initarg :value :reader value)))
+
 (defparameter *environment* *globals*)
 
 (defstruct lox-function arity call)
-
 (defun create-lox-function (params body)
     (let ((arity (lambda () (length params)))
           (call (lambda (arguments)
@@ -28,7 +30,13 @@
                                    nil)))
                       (progn
                         (helper params arguments)
-                        (execute-block body env)))))))
+                        (let ((prev-env *environment*))
+                          (handler-case
+                              (execute-block body env)
+                            (lox-return (c)
+                              (progn
+                                (setf *environment* prev-env)
+                                (value c)))))))))))
       (make-lox-function :arity arity :call call)))
 
 (defun call (func arguments)
@@ -42,7 +50,6 @@
     ((clock) (funcall (clock-arity func)))
     ((lox-function) (funcall (lox-function-arity func)))
     (t (error "Invalid function"))))
-
 
 (ast:defvisit literal (value) value)
 (ast:defvisit grouping (expression) (accept expression))
@@ -161,7 +168,18 @@
 
 (ast:defvisit function-decl (name params body)
   (let ((func (create-lox-function params body)))
-    (environment:define *environment* name func)))
+    (if (eq *environment* *globals*)
+        (progn
+          (environment:define *environment* name func)
+          (environment:define *globals* name func))
+        (environment:define *environment* name func))))
+
+(ast:defvisit return-stmt (expression)
+  (let ((value
+          (if (null expression)
+              nil
+              (accept expression))))
+    (error 'lox-return :value value)))
 
 (defun execute-block (statements new-env)
   (let ((previous-env *environment*))
@@ -169,7 +187,8 @@
       (setf *environment* new-env)
       (dolist (statement statements)
         (accept statement))
-      (setf *environment* previous-env))))
+      (setf *environment* previous-env)
+      nil)))
 
 (defun check-number (operand)
   (if (numberp operand)
@@ -211,6 +230,7 @@
     ((ast:function-decl) (visit-function-decl object))
     ((ast:variable-ref) (visit-variable-ref object))
     ((ast:block-stmt) (visit-block-stmt object))
+    ((ast:return-stmt) (visit-return-stmt object))
     ((ast:if-stmt) (visit-if-stmt object))
     ((ast:call) (visit-call object))
     ((ast:logical) (visit-logical object))
