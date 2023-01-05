@@ -18,10 +18,10 @@
 (defparameter *environment* *globals*)
 
 (defstruct lox-function arity call)
-(defun create-lox-function (params body)
+(defun create-lox-function (params body closure)
     (let ((arity (lambda () (length params)))
           (call (lambda (arguments)
-                  (let ((env (environment:create-env-with-enclosing *globals*)))
+                  (let ((env (environment:create-env-with-enclosing closure)))
                     (labels ((helper (params arguments)
                                (if (not (null params))
                                    (progn
@@ -167,7 +167,7 @@
         (error "Expected ~a arguments but got ~a." (arity callee) (length arguments)))))
 
 (ast:defvisit function-decl (name params body)
-  (let ((func (create-lox-function params body)))
+  (let ((func (create-lox-function params body *environment*)))
     (if (eq *environment* *globals*)
         (progn
           (environment:define *environment* name func)
