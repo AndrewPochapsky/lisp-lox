@@ -1,0 +1,7 @@
+var a = "hi";
+
+print a;
+
+a = "bye";
+
+print a;

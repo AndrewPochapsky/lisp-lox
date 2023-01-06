@@ -24,9 +24,9 @@
 (defstruct assign name expression)
 (defstruct call callee paren arguments)
 
-(defun accept (object visitor)
+(defun accept (object env visitor)
   "Accepts an OBJECT and a VISITOR function and calls the VISITOR function with the OBJECT as an argument."
-  (funcall visitor object))
+  (funcall visitor object env))
 
 (defmacro defvisit (struct-name values &rest body)
   (let ((function-name (intern (concatenate
@@ -37,20 +37,9 @@
         (param-list (loop for value in values
                           for arg-name = (intern (concatenate 'string (write-to-string struct-name) "-" (write-to-string value)) (find-package :ast))
                           collect `(,value (funcall ',arg-name obj)))))
-  `(defun ,function-name (obj &key ,@param-list)
+  `(defun ,function-name (obj env &key ,@param-list)
      ,@body)))
 
 
 (let ((pack (find-package :ast)))
   (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
-
-(define-condition integer-error (error)
-  ((integer-value :initarg :integer-value :reader integer-value)))
-
-(defun raise-integer-error (integer-value)
-  (error 'integer-error :integer-value integer-value))
-
-(handler-case
-    (raise-integer-error 42)
-  (integer-error (c)
-    (format t "An integer error occurred with value ~D" (integer-value c))))

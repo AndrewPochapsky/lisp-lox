@@ -4,39 +4,28 @@
 
 (in-package #:interpreter)
 
-(defparameter *globals* (environment:create-env))
 (defstruct clock arity call)
-
-(environment:define-with-name *globals* "clock"
-  (make-clock
-    :arity (lambda () 0)
-    :call (lambda (arguments) (/ (get-internal-real-time) 1000))))
 
 (define-condition lox-return (error)
   ((value :initarg :value :reader value)))
-
-(defparameter *environment* *globals*)
 
 (defstruct lox-function arity call)
 (defun create-lox-function (params body closure)
     (let ((arity (lambda () (length params)))
           (call (lambda (arguments)
                   (let ((env (environment:create-env-with-enclosing closure)))
-                    (labels ((helper (params arguments)
+                    (labels ((helper (params arguments env)
                                (if (not (null params))
-                                   (progn
-                                     (environment:define-with-name env (lexer:token-lexeme (car params)) (car arguments))
-                                     (helper (cdr params) (cdr arguments)))
-                                   nil)))
-                      (progn
-                        (helper params arguments)
-                        (let ((prev-env *environment*))
+                                     (helper
+                                       (cdr params)
+                                       (cdr arguments)
+                                       (environment:define-with-name env (lexer:token-lexeme (car params)) (car arguments)))
+                                   env)))
+                        (let ((env (helper params arguments env)))
                           (handler-case
                               (execute-block body env)
                             (lox-return (c)
-                              (progn
-                                (setf *environment* prev-env)
-                                (value c)))))))))))
+                              (value c)))))))))
       (make-lox-function :arity arity :call call)))
 
 (defun call (func arguments)
@@ -49,146 +38,178 @@
   (case (type-of func)
     ((clock) (funcall (clock-arity func)))
     ((lox-function) (funcall (lox-function-arity func)))
-    (t (error "Invalid function"))))
+    (t (error "Invalid function: ~a" func))))
 
-(ast:defvisit literal (value) value)
-(ast:defvisit grouping (expression) (accept expression))
+(ast:defvisit literal (value) (list value ast:env))
+
+(ast:defvisit grouping (expression)
+  (let* ((result (accept expression ast:env))
+         (value (first result))
+         (env (second result)))
+    (list value env)))
+
 (ast:defvisit unary (operator right)
-  (let ((right (accept right))
-        (type (symbol-name (lexer:token-type operator))))
+  (let* ((result (accept right ast:env))
+         (right (first result))
+         (env (second result))
+         (type (symbol-name (lexer:token-type operator))))
     (cond
       ((string= "MINUS" type)
        (progn
          (check-number right)
-         (- right)))
-      ((string= "BANG" type) (not (is-truthy right)))
+         (list (- right) env)))
+      ((string= "BANG" type)
+       (list (not (is-truthy right)) env))
       (t nil))))
 
 (ast:defvisit binary (left operator right)
-  (let ((left (accept left))
-        (right (accept right))
-        (type (symbol-name (lexer:token-type operator))))
+  (let* ((left-result (accept left ast:env))
+         (right-result (accept right (second left-result)))
+         (left (first left-result))
+         (right (first right-result))
+         (env (second right-result))
+         (type (symbol-name (lexer:token-type operator))))
     (cond
       ((string= "GREATER" type)
        (progn
          (check-numbers left right)
-         (> left right)))
+         (list (> left right) env)))
       ((string= "GREATER-EQUAL" type)
        (progn
          (check-numbers left right)
-         (>= left right)))
+         (list (>= left right) env)))
       ((string= "LESS" type)
        (progn
          (check-numbers left right)
-         (< left right)))
+         (list (< left right) env)))
       ((string= "LESS-EQUAL" type)
        (progn
          (check-numbers left right)
-         (<= left right)))
+         (list (<= left right) env)))
       ((string= "BANG-EQUAL" type) (not (is-equal left right)))
       ((string= "EQUAL-EQUAL" type) (is-equal left right))
       ((string= "MINUS" type)
        (progn
          (check-numbers left right)
-         (- left right)))
+         (list (- left right) env)))
       ((string= "PLUS" type)
        (cond
-         ((and (stringp left) (stringp right)) (concatenate 'string left right))
+         ((and (stringp left) (stringp right)) (list (concatenate 'string left right) env))
          ((and (numberp left) (numberp right))
           (progn
             (check-numbers left right)
-            (+ left right)))
-         (t (error "Operands must be two numbers or two strings."))))
+            (list (+ left right) env)))
+         (t (error "Operands must be two numbers or two strings. Actual: ~a ~a" left right))))
       ((string= "SLASH" type)
        (progn
          (check-numbers left right)
-         (/ left right)))
+         (list (/ left right) env)))
       ((string= "STAR" type)
        (progn
          (check-numbers left right)
-         (* left right)))
+         (list (* left right) env)))
       (t nil))))
 
 (ast:defvisit expression-stmt (expression)
-  (progn
-    (accept expression)
-    nil))
+  (let* ((result (accept expression ast:env))
+         (env (second result)))
+    (list nil env)))
 
 (ast:defvisit print-stmt (expression)
-  (print
-    (accept expression)))
+  (let* ((result (accept expression ast:env))
+         (value (first result))
+         (env (second result)))
+    (list (print value) env)))
 
 (ast:defvisit variable-decl (name initializer)
   (if (null initializer)
-      (environment:define *environment* name initializer)
-      (environment:define *environment* name (accept initializer))))
+      (list nil (environment:define ast:env name nil))
+      (let* ((result (accept initializer ast:env))
+            (value (first result))
+            (env (second result)))
+        (list nil (environment:define env name value)))))
 
 (ast:defvisit variable-ref (name)
-  (environment:get-value *environment* name))
+  (list (environment:get-value ast:env name) ast:env))
 
 (ast:defvisit assign (name expression)
-  (let ((value (accept expression)))
+  (let* ((result (accept expression ast:env))
+         (value (first result))
+         (env (second result)))
     (progn
-      (environment:assign *environment* name value)
-      value)))
+      ; assign is modifying the current env inplace
+      (environment:assign env name value)
+      (list value env))))
 
 (ast:defvisit block-stmt (statements)
-  (execute-block statements (environment:create-env-with-enclosing *environment*)))
+  (execute-block statements (environment:create-env-with-enclosing ast:env)))
 
 (ast:defvisit if-stmt (condition then-branch else-branch)
-  (if (is-truthy (accept condition))
-      (accept then-branch)
-      (if (not (null else-branch))
-          (accept else-branch)
-          nil)))
+  (let* ((result (accept condition ast:env))
+         (condition (first result))
+         (env (second result)))
+    (if (is-truthy condition)
+        (accept then-branch env)
+        (if (not (null else-branch))
+            (accept else-branch env)
+            (list nil env)))))
 
 (ast:defvisit while-stmt (condition body)
-  (if (is-truthy (accept condition))
-      (progn
-        (accept body)
-        (visit-while-stmt ast:obj))
-      nil))
+  (let* ((result (accept condition ast:env))
+         (condition (first result))
+         (env (second result)))
+    (if (is-truthy condition)
+        (let* ((result (accept body env))
+               (env (second result)))
+          (visit-while-stmt ast:obj env)))
+    (list nil env)))
 
 (ast:defvisit logical (left operator right)
-  (let ((left (accept left)))
+  (let* ((result (accept left ast:env))
+         (left (first result))
+         (env (second result)))
     (if (string= (lexer:token-type operator) 'or)
         (if (is-truthy left)
-            left
-            (accept right))
+            (list left env)
+            (accept right env))
         (if (not (is-truthy left))
-            left
-            (accept right)))))
+            (list left env)
+            (accept right env)))))
 
 (ast:defvisit call (callee arguments)
-  (let ((callee (accept callee))
-        (arguments (mapcar #'accept arguments)))
+  (let* ((result (accept callee ast:env))
+         (callee (first result))
+         (env (second result))
+         (func (lambda (argument) (accept argument env)))
+         (arguments (mapcar  #'first (mapcar func arguments))))
     (if (eq (length arguments) (arity callee))
-        (call callee arguments)
+        (list (call callee arguments) env)
         (error "Expected ~a arguments but got ~a." (arity callee) (length arguments)))))
 
 (ast:defvisit function-decl (name params body)
-  (let ((func (create-lox-function params body *environment*)))
-    (if (eq *environment* *globals*)
-        (progn
-          (environment:define *environment* name func)
-          (environment:define *globals* name func))
-        (environment:define *environment* name func))))
+  (let* ((env (environment:define ast:env name "placeholder"))
+         (func (create-lox-function params body env)))
+    (progn
+      (environment:assign env name func)
+      (list nil env))))
 
 (ast:defvisit return-stmt (expression)
   (let ((value
           (if (null expression)
               nil
-              (accept expression))))
-    (error 'lox-return :value value)))
+              (accept expression ast:env))))
+    ; Do we need to pass env in here? I don't think so...
+    (error 'lox-return :value (car value))))
 
 (defun execute-block (statements new-env)
-  (let ((previous-env *environment*))
-    (progn
-      (setf *environment* new-env)
-      (dolist (statement statements)
-        (accept statement))
-      (setf *environment* previous-env)
-      nil)))
+  (labels ((helper (statements env)
+             (if (null statements)
+                 env
+                 (let* ((result (accept (car statements) env))
+                        (env (second result)))
+                   (helper (cdr statements) env)))))
+    (let* ((env (helper statements new-env)))
+      (list nil (environment:environment-enclosing env)))))
 
 (defun check-number (operand)
   (if (numberp operand)
@@ -220,32 +241,40 @@
               (t T)))
           T)))
 
-(defun visit-interpreter (object)
+(defun visit-interpreter (object env)
   "Implements the operation for OBJECT using the visitor pattern."
   (case (type-of object)
-    ((ast:expression-stmt) (visit-expression-stmt object))
-    ((ast:print-stmt) (visit-print-stmt object))
-    ((ast:while-stmt) (visit-while-stmt object))
-    ((ast:variable-decl) (visit-variable-decl object))
-    ((ast:function-decl) (visit-function-decl object))
-    ((ast:variable-ref) (visit-variable-ref object))
-    ((ast:block-stmt) (visit-block-stmt object))
-    ((ast:return-stmt) (visit-return-stmt object))
-    ((ast:if-stmt) (visit-if-stmt object))
-    ((ast:call) (visit-call object))
-    ((ast:logical) (visit-logical object))
-    ((ast:assign) (visit-assign object))
-    ((ast:binary) (visit-binary object))
-    ((ast:unary) (visit-unary object))
-    ((ast:grouping) (visit-grouping object))
-    ((ast:literal) (visit-literal object))))
+    ((ast:expression-stmt) (visit-expression-stmt object env))
+    ((ast:print-stmt) (visit-print-stmt object env))
+    ((ast:while-stmt) (visit-while-stmt object env))
+    ((ast:variable-decl) (visit-variable-decl object env))
+    ((ast:function-decl) (visit-function-decl object env))
+    ((ast:variable-ref) (visit-variable-ref object env))
+    ((ast:block-stmt) (visit-block-stmt object env))
+    ((ast:return-stmt) (visit-return-stmt object env))
+    ((ast:if-stmt) (visit-if-stmt object env))
+    ((ast:call) (visit-call object env))
+    ((ast:logical) (visit-logical object env))
+    ((ast:assign) (visit-assign object env))
+    ((ast:binary) (visit-binary object env))
+    ((ast:unary) (visit-unary object env))
+    ((ast:grouping) (visit-grouping object env))
+    ((ast:literal) (visit-literal object env))))
 
-(defun accept (obj)
-    (ast:accept obj #'visit-interpreter))
+(defun accept (obj env)
+    (ast:accept obj env #'visit-interpreter))
 
 (defun interpret (expressions)
-  (if (null expressions)
-      nil
-      (progn
-        (accept (car expressions))
-        (interpret (cdr expressions)))))
+  (let* ((globals
+          (environment:define-with-name (environment:create-env) "clock"
+            (make-clock
+              :arity (lambda () 0)
+              :call (lambda (arguments) (/ (get-internal-real-time) 1000)))))
+         (env (environment:create-env-with-enclosing globals)))
+    (labels ((helper (expressions env)
+               (if (null expressions)
+                   nil
+                   (let* ((result (accept (car expressions) env))
+                          (env (second result)))
+                     (helper (cdr expressions) env)))))
+      (helper expressions env))))
