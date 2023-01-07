@@ -1,15 +1,6 @@
-// this is a comment
-(( )){} // grouping stuff
-// "This should be ignored"
-!*+-/=<> <= == // operators
-!! 456 "This is a asdf string"
-"Numbers in a string are all good 123.4556"
-123
-12.56"asdf"...
-12.1.""
+var a = "outer";
+{
 
-var example = 123;
-
-fun example() {
-    return x;
+    var a = a;
+    print a;
 }

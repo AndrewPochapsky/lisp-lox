@@ -13,6 +13,7 @@
 (defstruct if-stmt condition then-branch else-branch)
 (defstruct while-stmt condition body)
 (defstruct return-stmt expression)
+(defstruct class-stmt name methods)
 
 ;;; Expressions
 (defstruct binary left operator right)

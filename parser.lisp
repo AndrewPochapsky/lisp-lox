@@ -17,8 +17,31 @@
   (let ((token-type (lexer:token-type (car input))))
     (cond
       ((string= token-type 'var) (var-declaration (cdr input)))
+      ((string= token-type 'class) (class-declaration (cdr input)))
       ((string= token-type 'fun) (function-declaration (cdr input) "function"))
       (t (statement input)))))
+
+(defun class-declaration (input)
+  (let ((name (car input)))
+    (if (not (string= (lexer:token-type name) 'identifier))
+        (error "Expected class name")
+        (if (not (string= (lexer:token-type (cadr input)) 'left-brace))
+            (error "Expected '{' before class body")
+            (labels ((helper (methods input)
+                       (let ((next-type (lexer:token-type (car input))))
+                         (if (or (string= next-type 'right-brace) (string= next-type 'eof))
+                             ; Note that this returns the methods in reverse order.
+                             (list methods input)
+                             (let* ((result (function-declaration input "method"))
+                                    (method (first result))
+                                    (rest (second result)))
+                               (helper (push method methods) rest))))))
+              (let* ((result (helper '() (cddr input)))
+                     (methods (first result))
+                     (rest (second result)))
+                (if (not (string= (lexer:token-type (car rest)) 'right-brace))
+                    (error "Expected '}' after class body but was ~a" (car rest))
+                    (list (ast:make-class-stmt :name name :methods methods) (cdr rest)))))))))
 
 (defun function-declaration (input kind)
   (let ((name (car input)))
@@ -80,6 +103,7 @@
               (rest (second result)))
          (list (ast:make-block-stmt :statements statements) rest)))
       (t (expression-statement input)))))
+
 
 (defun return-statement (input)
   (if (string= (lexer:token-type (car input)) 'semi-colon)

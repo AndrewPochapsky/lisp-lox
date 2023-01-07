@@ -9,4 +9,3 @@ var a = "global";
   showA();
   print a;
 }
-

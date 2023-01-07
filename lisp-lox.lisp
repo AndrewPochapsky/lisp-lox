@@ -18,4 +18,4 @@
     (parser:parse
       (lexer:scan-tokens (coerce source 'list)))))
 
-(main "file3.lox")
+(main "class.lox")
