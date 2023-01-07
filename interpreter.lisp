@@ -4,9 +4,9 @@
 
 (in-package #:interpreter)
 
-(defstruct lox-class name)
-(defun create-lox-class (name)
-  (make-lox-class :name name))
+(defstruct lox-class name methods)
+(defun create-lox-class (name methods)
+  (make-lox-class :name name :methods methods))
 
 (defstruct lox-instance class fields)
 (defun create-lox-instance (class)
@@ -15,9 +15,13 @@
 (defun get-instance-value (instance name-token)
   (let* ((name (lexer:token-lexeme name-token))
          (fields (lox-instance-fields instance))
-         (existing-value (gethash name fields :not-found)))
+         (methods (lox-class-methods (lox-instance-class instance)))
+         (existing-value (gethash name fields :not-found))
+         (existing-method (gethash name methods :not-found)))
     (if (eq existing-value :not-found)
-        (error "Undefined property '~a'." name)
+        (if (eq existing-method :not-found)
+            (error "Undefined property '~a'." name)
+            existing-method)
         existing-value)))
 
 (defun set-instance-value (instance name-token value)
@@ -211,6 +215,17 @@
     (progn
       (environment:assign env name class)
       (list nil env))))
+
+(ast:defvisit class-decl (name methods)
+  (let ((env (environment:define ast:env name "placeholder"))
+        (methods-table (make-hash-table :test #'equal)))
+    (progn
+      (dolist (method methods)
+        (let ((func (create-lox-function (ast:function-decl-params method) (ast:function-decl-body method) env)))
+          (setf (gethash (lexer:token-lexeme (ast:function-decl-name method)) methods-table) func)))
+      (environment:assign env name (create-lox-class name methods-table))
+      (list nil env))))
+
 
 (ast:defvisit function-decl (name params body)
   (let* ((env (environment:define ast:env name "placeholder"))
