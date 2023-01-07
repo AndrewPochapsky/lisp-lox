@@ -5,6 +5,7 @@
 
 (defstruct variable-decl name initializer)
 (defstruct function-decl name params body)
+(defstruct class-decl name methods)
 
 ;;; Statements
 (defstruct print-stmt expression)
@@ -13,12 +14,13 @@
 (defstruct if-stmt condition then-branch else-branch)
 (defstruct while-stmt condition body)
 (defstruct return-stmt expression)
-(defstruct class-stmt name methods)
 
 ;;; Expressions
 (defstruct binary left operator right)
 (defstruct logical left operator right)
 (defstruct grouping expression)
+(defstruct get-expr object name)
+(defstruct set-expr object name value)
 (defstruct literal value)
 (defstruct unary operator right)
 (defstruct variable-ref name)

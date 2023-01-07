@@ -1,11 +1,13 @@
-class Breakfast {
-  cook() {
-    print "Eggs a-fryin'!";
-  }
+class Container {
 
-  serve(who) {
-    print "Enjoy your breakfast, " + who + ".";
-  }
 }
 
-print "hi";
+var container = Container();
+
+container.value = "this is the value";
+
+print container.value;
+
+container.value = 1;
+
+print container.value;

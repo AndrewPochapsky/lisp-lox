@@ -4,7 +4,26 @@
 
 (in-package #:interpreter)
 
-(defstruct clock arity call)
+(defstruct lox-class name)
+(defun create-lox-class (name)
+  (make-lox-class :name name))
+
+(defstruct lox-instance class fields)
+(defun create-lox-instance (class)
+  (make-lox-instance :class class :fields (make-hash-table :test #'equal)))
+
+(defun get-instance-value (instance name-token)
+  (let* ((name (lexer:token-lexeme name-token))
+         (fields (lox-instance-fields instance))
+         (existing-value (gethash name fields :not-found)))
+    (if (eq existing-value :not-found)
+        (error "Undefined property '~a'." name)
+        existing-value)))
+
+(defun set-instance-value (instance name-token value)
+  (let ((name (lexer:token-lexeme name-token))
+        (fields (lox-instance-fields instance)))
+    (setf (gethash name fields) value)))
 
 (define-condition lox-return (error)
   ((value :initarg :value :reader value)))
@@ -28,17 +47,17 @@
                               (value c)))))))))
       (make-lox-function :arity arity :call call)))
 
-(defun call (func arguments)
-  (case (type-of func)
-    ((clock) (funcall (clock-call func) arguments))
-    ((lox-function) (funcall (lox-function-call func) arguments))
-    (t (error "Invalid function type"))))
+(defun call (callable arguments)
+  (case (type-of callable)
+    ((lox-function) (funcall (lox-function-call callable) arguments))
+    ((lox-class) (create-lox-instance callable))
+    (t (error "Invalid callable type for call"))))
 
-(defun arity (func)
-  (case (type-of func)
-    ((clock) (funcall (clock-arity func)))
-    ((lox-function) (funcall (lox-function-arity func)))
-    (t (error "Invalid function: ~a" func))))
+(defun arity (callable)
+  (case (type-of callable)
+    ((lox-function) (funcall (lox-function-arity callable)))
+    ((lox-class) 0)
+    (t (error "Invalid callable type for arity ~a" callable))))
 
 (ast:defvisit literal (value) (list value ast:env))
 
@@ -186,12 +205,40 @@
         (list (call callee arguments) env)
         (error "Expected ~a arguments but got ~a." (arity callee) (length arguments)))))
 
+(ast:defvisit class-decl (name methods)
+  (let* ((env (environment:define ast:env name "placeholder"))
+         (class (create-lox-class name)))
+    (progn
+      (environment:assign env name class)
+      (list nil env))))
+
 (ast:defvisit function-decl (name params body)
   (let* ((env (environment:define ast:env name "placeholder"))
          (func (create-lox-function params body env)))
     (progn
       (environment:assign env name func)
       (list nil env))))
+
+(ast:defvisit get-expr (object name)
+  (let* ((result (accept object ast:env))
+         (object (first result))
+         (env (second result)))
+    (if (lox-instance-p object)
+        (list (get-instance-value object name) env)
+        (error "Only instances have properties"))))
+
+(ast:defvisit set-expr (object name value)
+  (let* ((result (accept object ast:env))
+         (object (first result))
+         (env (second result)))
+    (if (not (lox-instance-p object))
+        (error "Only instances have fields")
+        (let* ((result (accept value env))
+               (value (first result))
+               (env (second result)))
+          (progn
+            (set-instance-value object name value)
+            (list value env))))))
 
 (ast:defvisit return-stmt (expression)
   (let ((value
@@ -249,6 +296,9 @@
     ((ast:while-stmt) (visit-while-stmt object env))
     ((ast:variable-decl) (visit-variable-decl object env))
     ((ast:function-decl) (visit-function-decl object env))
+    ((ast:class-decl) (visit-class-decl object env))
+    ((ast:get-expr) (visit-get-expr object env))
+    ((ast:set-expr) (visit-set-expr object env))
     ((ast:variable-ref) (visit-variable-ref object env))
     ((ast:block-stmt) (visit-block-stmt object env))
     ((ast:return-stmt) (visit-return-stmt object env))
@@ -267,7 +317,7 @@
 (defun interpret (expressions)
   (let* ((globals
           (environment:define-with-name (environment:create-env) "clock"
-            (make-clock
+            (make-lox-function
               :arity (lambda () 0)
               :call (lambda (arguments) (/ (get-internal-real-time) 1000)))))
          (env (environment:create-env-with-enclosing globals)))
