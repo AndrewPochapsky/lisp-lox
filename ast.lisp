@@ -21,6 +21,7 @@
 (defstruct grouping expression)
 (defstruct get-expr object name)
 (defstruct set-expr object name value)
+(defstruct this keyword)
 (defstruct literal value)
 (defstruct unary operator right)
 (defstruct variable-ref name)

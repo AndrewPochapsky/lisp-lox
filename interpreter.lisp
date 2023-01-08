@@ -21,7 +21,9 @@
     (if (eq existing-value :not-found)
         (if (eq existing-method :not-found)
             (error "Undefined property '~a'." name)
-            existing-method)
+            (let* ((env (environment:create-env-with-enclosing (lox-function-closure existing-method)))
+                   (env (environment:define-with-name env "this" instance)))
+              (create-lox-function (lox-function-params existing-method) (lox-function-body existing-method) env)))
         existing-value)))
 
 (defun set-instance-value (instance name-token value)
@@ -32,7 +34,7 @@
 (define-condition lox-return (error)
   ((value :initarg :value :reader value)))
 
-(defstruct lox-function arity call)
+(defstruct lox-function arity call closure params body)
 (defun create-lox-function (params body closure)
     (let ((arity (lambda () (length params)))
           (call (lambda (arguments)
@@ -49,7 +51,7 @@
                               (execute-block body env)
                             (lox-return (c)
                               (value c)))))))))
-      (make-lox-function :arity arity :call call)))
+      (make-lox-function :arity arity :call call :closure closure :params params :body body)))
 
 (defun call (callable arguments)
   (case (type-of callable)
@@ -155,6 +157,9 @@
 (ast:defvisit variable-ref (name)
   (list (environment:get-value ast:env name) ast:env))
 
+(ast:defvisit this (keyword)
+  (list (environment:get-value ast:env keyword) ast:env))
+
 (ast:defvisit assign (name expression)
   (let* ((result (accept expression ast:env))
          (value (first result))
@@ -208,13 +213,6 @@
     (if (eq (length arguments) (arity callee))
         (list (call callee arguments) env)
         (error "Expected ~a arguments but got ~a." (arity callee) (length arguments)))))
-
-(ast:defvisit class-decl (name methods)
-  (let* ((env (environment:define ast:env name "placeholder"))
-         (class (create-lox-class name)))
-    (progn
-      (environment:assign env name class)
-      (list nil env))))
 
 (ast:defvisit class-decl (name methods)
   (let ((env (environment:define ast:env name "placeholder"))
@@ -315,6 +313,7 @@
     ((ast:get-expr) (visit-get-expr object env))
     ((ast:set-expr) (visit-set-expr object env))
     ((ast:variable-ref) (visit-variable-ref object env))
+    ((ast:this) (visit-this object env))
     ((ast:block-stmt) (visit-block-stmt object env))
     ((ast:return-stmt) (visit-return-stmt object env))
     ((ast:if-stmt) (visit-if-stmt object env))
@@ -334,7 +333,8 @@
           (environment:define-with-name (environment:create-env) "clock"
             (make-lox-function
               :arity (lambda () 0)
-              :call (lambda (arguments) (/ (get-internal-real-time) 1000)))))
+              :call (lambda (arguments) (/ (get-internal-real-time) 1000))
+              :closure nil)))
          (env (environment:create-env-with-enclosing globals)))
     (labels ((helper (expressions env)
                (if (null expressions)

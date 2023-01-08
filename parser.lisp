@@ -373,6 +373,7 @@
   (let ((token-type (lexer:token-type (car input))))
     (cond
       ((string= token-type 'identifier) (list (ast:make-variable-ref :name (car input)) (cdr input)))
+      ((string= token-type 'this) (list (ast:make-this :keyword (car input)) (cdr input)))
       ((string= token-type 'false) (list (ast:make-literal :value 'false) (cdr input)))
       ((string= token-type 'true) (list (ast:make-literal :value 'true) (cdr input)))
       ((string= token-type 'null) (list (ast:make-literal :value nil) (cdr input)))

@@ -1,8 +1,10 @@
-class MyClass {
-
-    add(x, y) {
-        print x + y;
-    }
+class Cake {
+  taste(suffix) {
+    var adjective = "delicious";
+    print "The " + this.flavor + " cake is " + adjective + suffix;
+  }
 }
 
-MyClass().add(3, 5);
+var cake = Cake();
+cake.flavor = "German chocolate";
+cake.taste("!"); // Prints "The German chocolate cake is delicious!".
