@@ -4,9 +4,18 @@
 
 (in-package #:interpreter)
 
-(defstruct lox-class name methods)
-(defun create-lox-class (name methods)
-  (make-lox-class :name name :methods methods))
+(defstruct lox-class name superclass methods)
+(defun create-lox-class (name superclass methods)
+  (make-lox-class :name name :superclass superclass :methods methods))
+
+(defun find-class-method (class name)
+  (let ((method (gethash name (lox-class-methods class) :not-found))
+        (superclass (lox-class-superclass class)))
+    (if (eq :not-found method)
+        (if (null superclass)
+            :not-found
+            (find-class-method superclass name))
+        method)))
 
 (defstruct lox-instance class fields)
 (defun create-lox-instance (class)
@@ -15,9 +24,8 @@
 (defun get-instance-value (instance name-token)
   (let* ((name (lexer:token-lexeme name-token))
          (fields (lox-instance-fields instance))
-         (methods (lox-class-methods (lox-instance-class instance)))
          (existing-value (gethash name fields :not-found))
-         (existing-method (gethash name methods :not-found)))
+         (existing-method (find-class-method (lox-instance-class instance) name)))
     (if (eq existing-value :not-found)
         (if (eq existing-method :not-found)
             (error "Undefined property '~a'." name)
@@ -65,8 +73,7 @@
     ((lox-function) (funcall (lox-function-call callable) arguments))
     ((lox-class)
      (let* ((instance (create-lox-instance callable))
-            (methods (lox-class-methods callable))
-            (initializer (gethash "init" methods :not-found)))
+            (initializer (find-class-method callable "init")))
        (if (eq initializer :not-found)
            instance
            (let* ((env (environment:create-env-with-enclosing (lox-function-closure initializer)))
@@ -80,7 +87,7 @@
   (case (type-of callable)
     ((lox-function) (funcall (lox-function-arity callable)))
     ((lox-class)
-     (let ((initializer (gethash "init" (lox-class-methods callable) :not-found)))
+     (let ((initializer (find-class-method callable "init")))
        (if (eq initializer :not-found)
            0
            (arity initializer))))
@@ -235,15 +242,22 @@
         (list (call callee arguments) env)
         (error "Expected ~a arguments but got ~a." (arity callee) (length arguments)))))
 
-(ast:defvisit class-decl (name methods)
-  (let ((env (environment:define ast:env name "placeholder"))
-        (methods-table (make-hash-table :test #'equal)))
+(ast:defvisit class-decl (name superclass methods)
+  (let* ((env (environment:define ast:env name "placeholder"))
+        (methods-table (make-hash-table :test #'equal))
+        (evaled-superclass
+          (if (null superclass)
+              nil
+              (let ((superclass (first (accept superclass env))))
+                (if (not (lox-class-p superclass))
+                    (error "Superclass must be a class")
+                    superclass)))))
     (progn
       (dolist (method methods)
         (let ((func (create-lox-function (ast:function-decl-params method) (ast:function-decl-body method) env
                                          (string= (lexer:token-lexeme (ast:function-decl-name method)) "init"))))
           (setf (gethash (lexer:token-lexeme (ast:function-decl-name method)) methods-table) func)))
-      (environment:assign env name (create-lox-class name methods-table))
+      (environment:assign env name (create-lox-class name evaled-superclass methods-table))
       (list nil env))))
 
 

@@ -1,22 +1,9 @@
-class Point {
-    init(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    add() {
-        print this.x + this.y;
-    }
+class Doughnut {
+  cook() {
+    print "Fry until golden brown.";
+  }
 }
 
-var p = Point(1, 2);
-p.add();
+class BostonCream < Doughnut {}
 
-class Foo {
-    init() {
-        return;
-    }
-}
-
-var foo = Foo();
-print foo.init();
+BostonCream().cook();

@@ -5,7 +5,7 @@
 
 (defstruct variable-decl name initializer)
 (defstruct function-decl name params body)
-(defstruct class-decl name methods)
+(defstruct class-decl name superclass methods)
 
 ;;; Statements
 (defstruct print-stmt expression)
