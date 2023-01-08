@@ -244,22 +244,38 @@
 
 (ast:defvisit class-decl (name superclass methods)
   (let* ((env (environment:define ast:env name "placeholder"))
-        (methods-table (make-hash-table :test #'equal))
-        (evaled-superclass
-          (if (null superclass)
-              nil
-              (let ((superclass (first (accept superclass env))))
-                (if (not (lox-class-p superclass))
-                    (error "Superclass must be a class")
-                    superclass)))))
+         (methods-table (make-hash-table :test #'equal))
+         (evaled-superclass
+           (if (null superclass)
+               nil
+               (let ((superclass (first (accept superclass env))))
+                 (if (not (lox-class-p superclass))
+                     (error "Superclass must be a class")
+                     superclass))))
+         (env (if (null evaled-superclass)
+                  env
+                  (environment:define-with-name (environment:create-env-with-enclosing env) "super" evaled-superclass))))
     (progn
       (dolist (method methods)
         (let ((func (create-lox-function (ast:function-decl-params method) (ast:function-decl-body method) env
                                          (string= (lexer:token-lexeme (ast:function-decl-name method)) "init"))))
           (setf (gethash (lexer:token-lexeme (ast:function-decl-name method)) methods-table) func)))
-      (environment:assign env name (create-lox-class name evaled-superclass methods-table))
-      (list nil env))))
+      (let ((env (if (not (null superclass))
+                     (environment:environment-enclosing env)
+                     env)))
+        (environment:assign env name (create-lox-class name evaled-superclass methods-table))
+        (list nil env)))))
 
+(ast:defvisit super (keyword method)
+  (let* ((superclass (environment:get-value ast:env keyword))
+         ; Might need to get from enclosing
+         (instance (environment:get-value ast:env (lexer:create-token 'this "this" nil 0)))
+         (evaled-method (find-class-method superclass (lexer:token-lexeme method))))
+    (if (eq evaled-method :not-found)
+        (error "Undefined property '~a'" (lexer:token-lexeme method))
+        (let* ((env (environment:create-env-with-enclosing (lox-function-closure evaled-method)))
+               (env (environment:define-with-name env "this" instance)))
+          (list (create-lox-function (lox-function-params evaled-method) (lox-function-body evaled-method) env (lox-function-is-initializer evaled-method)) ast:env)))))
 
 (ast:defvisit function-decl (name params body)
   (let* ((env (environment:define ast:env name "placeholder"))
@@ -350,6 +366,7 @@
     ((ast:set-expr) (visit-set-expr object env))
     ((ast:variable-ref) (visit-variable-ref object env))
     ((ast:this) (visit-this object env))
+    ((ast:super) (visit-super object env))
     ((ast:block-stmt) (visit-block-stmt object env))
     ((ast:return-stmt) (visit-return-stmt object env))
     ((ast:if-stmt) (visit-if-stmt object env))

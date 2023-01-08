@@ -383,6 +383,12 @@
   (let ((token-type (lexer:token-type (car input))))
     (cond
       ((string= token-type 'identifier) (list (ast:make-variable-ref :name (car input)) (cdr input)))
+      ((string= token-type 'super)
+       (if (not (string= (lexer:token-type (cadr input)) 'dot))
+           (error "Expected '.' after 'super'.")
+           (if (not (string= (lexer:token-type (caddr input)) 'identifier))
+               (error "Exepected superclass method name.")
+               (list (ast:make-super :keyword (car input) :method (caddr input)) (cdddr input)))))
       ((string= token-type 'this) (list (ast:make-this :keyword (car input)) (cdr input)))
       ((string= token-type 'false) (list (ast:make-literal :value 'false) (cdr input)))
       ((string= token-type 'true) (list (ast:make-literal :value 'true) (cdr input)))
