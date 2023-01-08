@@ -23,7 +23,8 @@
             (error "Undefined property '~a'." name)
             (let* ((env (environment:create-env-with-enclosing (lox-function-closure existing-method)))
                    (env (environment:define-with-name env "this" instance)))
-              (create-lox-function (lox-function-params existing-method) (lox-function-body existing-method) env)))
+              (create-lox-function (lox-function-params existing-method) (lox-function-body existing-method)
+                                   env (lox-function-is-initializer existing-method))))
         existing-value)))
 
 (defun set-instance-value (instance name-token value)
@@ -34,8 +35,8 @@
 (define-condition lox-return (error)
   ((value :initarg :value :reader value)))
 
-(defstruct lox-function arity call closure params body)
-(defun create-lox-function (params body closure)
+(defstruct lox-function arity call closure params body is-initializer)
+(defun create-lox-function (params body closure is-initializer)
     (let ((arity (lambda () (length params)))
           (call (lambda (arguments)
                   (let ((env (environment:create-env-with-enclosing closure)))
@@ -47,22 +48,42 @@
                                        (environment:define-with-name env (lexer:token-lexeme (car params)) (car arguments)))
                                    env)))
                         (let ((env (helper params arguments env)))
-                          (handler-case
-                              (execute-block body env)
-                            (lox-return (c)
-                              (value c)))))))))
-      (make-lox-function :arity arity :call call :closure closure :params params :body body)))
+                          (if is-initializer
+                              (progn
+                                (execute-block body env)
+                                ; return this in init
+                                (environment:get-value env (lexer:create-token 'this "this" nil 0)))
+                              (handler-case
+                                  (execute-block body env)
+                                ; Code doesn't currently gracefully prevent returning in an initializer
+                                (lox-return (c)
+                                  (value c))))))))))
+      (make-lox-function :arity arity :call call :closure closure :params params :body body :is-initializer is-initializer)))
 
 (defun call (callable arguments)
   (case (type-of callable)
     ((lox-function) (funcall (lox-function-call callable) arguments))
-    ((lox-class) (create-lox-instance callable))
+    ((lox-class)
+     (let* ((instance (create-lox-instance callable))
+            (methods (lox-class-methods callable))
+            (initializer (gethash "init" methods :not-found)))
+       (if (eq initializer :not-found)
+           instance
+           (let* ((env (environment:create-env-with-enclosing (lox-function-closure initializer)))
+                  (env (environment:define-with-name env "this" instance)))
+             (progn
+               (call (create-lox-function (lox-function-params initializer) (lox-function-body initializer) env T) arguments)
+               instance)))))
     (t (error "Invalid callable type for call"))))
 
 (defun arity (callable)
   (case (type-of callable)
     ((lox-function) (funcall (lox-function-arity callable)))
-    ((lox-class) 0)
+    ((lox-class)
+     (let ((initializer (gethash "init" (lox-class-methods callable) :not-found)))
+       (if (eq initializer :not-found)
+           0
+           (arity initializer))))
     (t (error "Invalid callable type for arity ~a" callable))))
 
 (ast:defvisit literal (value) (list value ast:env))
@@ -219,7 +240,8 @@
         (methods-table (make-hash-table :test #'equal)))
     (progn
       (dolist (method methods)
-        (let ((func (create-lox-function (ast:function-decl-params method) (ast:function-decl-body method) env)))
+        (let ((func (create-lox-function (ast:function-decl-params method) (ast:function-decl-body method) env
+                                         (string= (lexer:token-lexeme (ast:function-decl-name method)) "init"))))
           (setf (gethash (lexer:token-lexeme (ast:function-decl-name method)) methods-table) func)))
       (environment:assign env name (create-lox-class name methods-table))
       (list nil env))))
@@ -227,7 +249,7 @@
 
 (ast:defvisit function-decl (name params body)
   (let* ((env (environment:define ast:env name "placeholder"))
-         (func (create-lox-function params body env)))
+         (func (create-lox-function params body env nil)))
     (progn
       (environment:assign env name func)
       (list nil env))))
